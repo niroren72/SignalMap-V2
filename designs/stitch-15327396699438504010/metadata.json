@@ -1,0 +1,26 @@
+{
+  "projectId": "15327396699438504010",
+  "projectTitle": "SignalMap",
+  "projectType": "TEXT_TO_UI_PRO",
+  "origin": "STITCH",
+  "deviceType": "DESKTOP",
+  "screens": [
+    {
+      "id": "8dd7d113517049d0a51729d628190ace",
+      "title": "SignalMap - Modernized Telemetry Dashboard (Dark Theme)",
+      "file": "dashboard_dark.html",
+      "screenshotUrl": "https://lh3.googleusercontent.com/aida/AEtjO1XFY8-IhomUIZc-bOsMN1N39dGIcZbmDmd7PiyPZm-Lds9vHudaYHROLK6SHxpBRdFUY_GkqSMSZZ5uxqbJGZJfVg9NS4KfCYB4ap99k98wewesepw6Vpo8dmDCB3jEPlekxoYNxMHqAymnv_2o1oJKCbNbsgs5B253ZHmU_ydsCgyBp85UAvbtfEOWqYs57GqhM5FjoFxqIMLYdwu5pGhIjhoKbFGXjQPeZjTv9E0v21f-PTze_uIl-M8"
+    },
+    {
+      "id": "3be7f5d6fa08494a88fd84909e182cf2",
+      "title": "SignalMap - Telemetry Dashboard (Light Theme)",
+      "file": "dashboard_light.html",
+      "screenshotUrl": "https://lh3.googleusercontent.com/aida/AEtjO1X_08RJ5qPwfXy3hNzec3uFGhMlHsRdZL_GzSBStSNSeW62WRTNKZ5wSc1EQRD254KnQctJG-7HLqwCiaWS2YZd1qGVs6j6EcdegEJGu4v5pVc_otLShJk5pju2yzu91rzSV5OC_h8WEvL8JQixUyzdqeMZQNHxYmtZzdT3-_5FfZ8Jk2W2WKsiAeFEq5gIZLAV1AvN0eDB8zYNeTsf1WWsyqq9EHPMk2x8cZh4Z55aAj_iMH2rMzNSO84"
+    },
+    {
+      "id": "670551813576158351",
+      "title": "image.png (Source Wireframe/Screenshot)",
+      "screenshotUrl": "https://lh3.googleusercontent.com/aida/AEtjO1V8MVepJZLuvVPDBay5kVOY2nIjYQwfyYhFJXifa963BB-_4hmBi4C9HXfqLckRX7poxZlZeFUifvtBvGisKOibSEUZAlXs6qGdP1ST1enaFirHMmI3OC4kVRq1wCIew8m8-cn6coq6XTTR0IdlQFY0FJdrLDUadTP-yCM9YGkSyyLZ47p5wg4r1vMchSyNJ3_VCsImz5fs9FB-QOM_WIKVdxEqn-CiNHBXgvZ19tiMVt3QFSk9o1cHyiUruiUL8l1dt1p7XAg7LCk"
+    }
+  ]
+}

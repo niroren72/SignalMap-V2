@@ -1,0 +1,152 @@
+# SignalMap — Extensible Threat & Anomaly Signatures
+# Maps suspicious processes, high-risk ports, and C2 indicators to MITRE ATT&CK techniques.
+
+threat_signatures:
+  processes:
+    powershell.exe:
+      severity: high
+      title: "PowerShell Outbound Connection"
+      description: "Command shell initiating network connection, often indicative of remote scripts or reverse shells"
+      mitre: "T1059.001"
+      tags: ["mitre:execution", "process:shell", "lotl"]
+
+    pwsh.exe:
+      severity: high
+      title: "PowerShell Core Outbound Connection"
+      description: "PowerShell Core initiating network traffic"
+      mitre: "T1059.001"
+      tags: ["mitre:execution", "process:shell", "lotl"]
+
+    cmd.exe:
+      severity: high
+      title: "Command Prompt Network Connection"
+      description: "CMD process communicating over network"
+      mitre: "T1059.003"
+      tags: ["mitre:execution", "process:shell", "lotl"]
+
+    rundll32.exe:
+      severity: critical
+      title: "Rundll32 Network Connection"
+      description: "Rundll32 executing code with external network activity (potential living-off-the-land attack)"
+      mitre: "T1218.011"
+      tags: ["mitre:defense-evasion", "lotl", "signed-binary-proxy"]
+
+    regsvr32.exe:
+      severity: critical
+      title: "Regsvr32 Network Activity"
+      description: "Regsvr32 executing external connection (Squiblydoo attack vector)"
+      mitre: "T1218.010"
+      tags: ["mitre:defense-evasion", "lotl", "signed-binary-proxy"]
+
+    certutil.exe:
+      severity: high
+      title: "CertUtil Download/Connection"
+      description: "Certutil network communication, often abused for payload downloading"
+      mitre: "T1105"
+      tags: ["mitre:ingress-tool-transfer", "lotl"]
+
+    wscript.exe:
+      severity: high
+      title: "WScript Network Activity"
+      description: "Windows Script Host communicating externally"
+      mitre: "T1059.005"
+      tags: ["mitre:execution", "script-host"]
+
+    cscript.exe:
+      severity: high
+      title: "CScript Network Activity"
+      description: "Command-line Script Host communicating externally"
+      mitre: "T1059.005"
+      tags: ["mitre:execution", "script-host"]
+
+    mshta.exe:
+      severity: critical
+      title: "MSHTA Outbound Connection"
+      description: "Microsoft HTML Application executing outbound request"
+      mitre: "T1218.005"
+      tags: ["mitre:defense-evasion", "lotl"]
+
+    bitsadmin.exe:
+      severity: high
+      title: "BITSAdmin Network Transfer"
+      description: "Background Intelligent Transfer Service abused for external download"
+      mitre: "T1197"
+      tags: ["mitre:persistence", "mitre:defense-evasion"]
+
+    vssadmin.exe:
+      severity: critical
+      title: "VSSAdmin Network Activity"
+      description: "Shadow copy administrator process with network activity"
+      mitre: "T1490"
+      tags: ["mitre:impact", "shadow-copies"]
+
+    mimikatz.exe:
+      severity: critical
+      title: "Mimikatz Credential Dumper Activity"
+      description: "Known credential extraction utility communicating over network"
+      mitre: "T1003"
+      tags: ["mitre:credential-access", "hacktool"]
+
+    nc.exe:
+      severity: critical
+      title: "Netcat / Ncat Reverse Shell Indicator"
+      description: "Netcat network socket communication"
+      mitre: "T1059"
+      tags: ["mitre:command-and-control", "reverse-shell"]
+
+  ports:
+    4444:
+      severity: critical
+      title: "Metasploit / C2 Default Port"
+      description: "Connection to port 4444 (commonly used by Metasploit payload listeners)"
+      mitre: "T1571"
+      tags: ["c2", "trojan", "port:4444"]
+
+    1337:
+      severity: high
+      title: "Elite / Hacker Port"
+      description: "Connection to classic backdoor port 1337"
+      mitre: "T1571"
+      tags: ["c2", "backdoor", "port:1337"]
+
+    31337:
+      severity: critical
+      title: "BackOrifice Trojan Port"
+      description: "Connection to port 31337 (BackOrifice backdoor)"
+      mitre: "T1571"
+      tags: ["c2", "trojan", "port:31337"]
+
+    6667:
+      severity: medium
+      title: "IRC Botnet Communication Port"
+      description: "Outbound connection to IRC port 6667 (frequent legacy C2 channel)"
+      mitre: "T1071.001"
+      tags: ["c2", "botnet", "port:6667"]
+
+    5555:
+      severity: medium
+      title: "Android ADB / Mining Port"
+      description: "Connection to port 5555 (ADB open port or cryptominer communication)"
+      mitre: "T1496"
+      tags: ["cryptominer", "adb", "port:5555"]
+
+    8888:
+      severity: low
+      title: "Alternative HTTP / Proxy Port"
+      description: "Connection on port 8888 (common alternate web proxy/C2)"
+      mitre: "T1090"
+      tags: ["proxy", "port:8888"]
+
+    23:
+      severity: high
+      title: "Telnet Insecure Protocol"
+      description: "Connection over unencrypted Telnet port 23"
+      mitre: "T1040"
+      tags: ["plaintext", "insecure-protocol", "port:23"]
+
+    21:
+      severity: low
+      title: "FTP Insecure Protocol"
+      description: "Unencrypted FTP control connection on port 21"
+      mitre: "T1040"
+      tags: ["plaintext", "insecure-protocol", "port:21"]

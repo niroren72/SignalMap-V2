@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<!-- saved from url=(0139)file:///C:/Users/User/Documents/MyProject/My%20Idea/Antigravity%20project/signalmap/designs/stitch-15327396699438504010/dashboard_dark.html -->
+<html class="dark" lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>SignalMap — Aerospace Telemetry &amp; Threat Observability Platform</title>
+<!-- Tailwind CSS CDN with Plugins -->
+<script src="./SignalMap — Aerospace Telemetry &amp; Threat Observability Platform_files/saved_resource"></script>
+<!-- Tailwind Custom Configuration -->
+<script data-purpose="tailwind-config">
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+            },
+            surface: {
+              base: '#070b12',
+              card: '#0c1322',
+              cardHover: '#111a2e',
+              border: 'rgba(255, 255, 255, 0.07)',
+              borderFocus: 'rgba(16, 185, 129, 0.4)',
+            }
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+          boxShadow: {
+            glowEmerald: '0 0 25px -5px rgba(16, 185, 129, 0.25)',
+            glowCyan: '0 0 25px -5px rgba(6, 182, 212, 0.25)',
+          }
+        }
+      }
+    };
+  </script>
+<!-- Font Embedding -->
+<link href="https://fonts.googleapis.com/" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com/" rel="preconnect">
+<link href="./SignalMap — Aerospace Telemetry &amp; Threat Observability Platform_files/css2" rel="stylesheet">
+<!-- Custom Styles: Base and Utility -->
+<style data-purpose="base-styling">
+    body {
+      background-color: #070b12;
+      color: #e2e8f0;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+    /* Subtle custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090e18;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+  </style>
+<!-- Custom Styles: Donut Chart & Visual Glows -->
+<style data-purpose="chart-decorations">
+    .donut-gauge {
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+    .donut-glow {
+      filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.65));
+    }
+    .grid-pattern {
+      background-size: 24px 24px;
+      background-image: linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    }
+  </style>
+<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:Inter, system-ui, -apple-system, sans-serif;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}[type='text'],input:where(:not([type])),[type='email'],[type='url'],[type='password'],[type='number'],[type='date'],[type='datetime-local'],[type='month'],[type='search'],[type='tel'],[type='time'],[type='week'],[multiple],textarea,select{-webkit-appearance:none;appearance:none;background-color:#fff;border-color:#6b7280;border-width:1px;border-radius:0px;padding-top:0.5rem;padding-right:0.75rem;padding-bottom:0.5rem;padding-left:0.75rem;font-size:1rem;line-height:1.5rem;--tw-shadow:0 0 #0000;}[type='text']:focus, input:where(:not([type])):focus, [type='email']:focus, [type='url']:focus, [type='password']:focus, [type='number']:focus, [type='date']:focus, [type='datetime-local']:focus, [type='month']:focus, [type='search']:focus, [type='tel']:focus, [type='time']:focus, [type='week']:focus, [multiple]:focus, textarea:focus, select:focus{outline:2px solid transparent;outline-offset:2px;--tw-ring-inset:var(--tw-empty,/*!*/ /*!*/);--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:#2563eb;--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);border-color:#2563eb}input::placeholder,textarea::placeholder{color:#6b7280;opacity:1}::-webkit-datetime-edit-fields-wrapper{padding:0}::-webkit-date-and-time-value{min-height:1.5em;text-align:inherit}::-webkit-datetime-edit{display:inline-flex}::-webkit-datetime-edit,::-webkit-datetime-edit-year-field,::-webkit-datetime-edit-month-field,::-webkit-datetime-edit-day-field,::-webkit-datetime-edit-hour-field,::-webkit-datetime-edit-minute-field,::-webkit-datetime-edit-second-field,::-webkit-datetime-edit-millisecond-field,::-webkit-datetime-edit-meridiem-field{padding-top:0;padding-bottom:0}select{background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");background-position:right 0.5rem center;background-repeat:no-repeat;background-size:1.5em 1.5em;padding-right:2.5rem;print-color-adjust:exact}[multiple],[size]:where(select:not([size="1"])){background-image:initial;background-position:initial;background-repeat:unset;background-size:initial;padding-right:0.75rem;print-color-adjust:unset}[type='checkbox'],[type='radio']{-webkit-appearance:none;appearance:none;padding:0;print-color-adjust:exact;display:inline-block;vertical-align:middle;background-origin:border-box;-webkit-user-select:none;user-select:none;flex-shrink:0;height:1rem;width:1rem;color:#2563eb;background-color:#fff;border-color:#6b7280;border-width:1px;--tw-shadow:0 0 #0000}[type='checkbox']{border-radius:0px}[type='radio']{border-radius:100%}[type='checkbox']:focus,[type='radio']:focus{outline:2px solid transparent;outline-offset:2px;--tw-ring-inset:var(--tw-empty,/*!*/ /*!*/);--tw-ring-offset-width:2px;--tw-ring-offset-color:#fff;--tw-ring-color:#2563eb;--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)}[type='checkbox']:checked,[type='radio']:checked{border-color:transparent;background-color:currentColor;background-size:100% 100%;background-position:center;background-repeat:no-repeat}[type='checkbox']:checked{background-image:url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");}@media (forced-colors: active) {[type='checkbox']:checked{-webkit-appearance:auto;appearance:auto}}[type='radio']:checked{background-image:url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3ccircle cx='8' cy='8' r='3'/%3e%3c/svg%3e");}@media (forced-colors: active) {[type='radio']:checked{-webkit-appearance:auto;appearance:auto}}[type='checkbox']:checked:hover,[type='checkbox']:checked:focus,[type='radio']:checked:hover,[type='radio']:checked:focus{border-color:transparent;background-color:currentColor}[type='checkbox']:indeterminate{background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 16 16'%3e%3cpath stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 8h8'/%3e%3c/svg%3e");border-color:transparent;background-color:currentColor;background-size:100% 100%;background-position:center;background-repeat:no-repeat;}@media (forced-colors: active) {[type='checkbox']:indeterminate{-webkit-appearance:auto;appearance:auto}}[type='checkbox']:indeterminate:hover,[type='checkbox']:indeterminate:focus{border-color:transparent;background-color:currentColor}[type='file']{background:unset;border-color:inherit;border-width:0;border-radius:0;padding:0;font-size:unset;line-height:inherit}[type='file']:focus{outline:1px solid ButtonText;outline:1px auto -webkit-focus-ring-color}.pointer-events-none{pointer-events:none}.absolute{position:absolute}.relative{position:relative}.sticky{position:sticky}.inset-0{inset:0px}.inset-y-0{top:0px;bottom:0px}.left-0{left:0px}.left-2\.5{left:0.625rem}.right-0{right:0px}.right-1\.5{right:0.375rem}.top-0{top:0px}.top-1\.5{top:0.375rem}.top-2\.5{top:0.625rem}.z-20{z-index:20}.z-30{z-index:30}.mx-auto{margin-left:auto;margin-right:auto}.my-2{margin-top:0.5rem;margin-bottom:0.5rem}.mb-2{margin-bottom:0.5rem}.mb-4{margin-bottom:1rem}.ml-1{margin-left:0.25rem}.ml-auto{margin-left:auto}.mr-1\.5{margin-right:0.375rem}.mt-0\.5{margin-top:0.125rem}.mt-1{margin-top:0.25rem}.mt-2{margin-top:0.5rem}.mt-3{margin-top:0.75rem}.mt-4{margin-top:1rem}.inline-block{display:inline-block}.flex{display:flex}.inline-flex{display:inline-flex}.grid{display:grid}.hidden{display:none}.h-1{height:0.25rem}.h-1\.5{height:0.375rem}.h-10{height:2.5rem}.h-16{height:4rem}.h-2{height:0.5rem}.h-2\.5{height:0.625rem}.h-3{height:0.75rem}.h-3\.5{height:0.875rem}.h-4{height:1rem}.h-44{height:11rem}.h-5{height:1.25rem}.h-6{height:1.5rem}.h-7{height:1.75rem}.h-9{height:2.25rem}.h-full{height:100%}.min-h-screen{min-height:100vh}.w-1\.5{width:0.375rem}.w-10{width:2.5rem}.w-16{width:4rem}.w-2{width:0.5rem}.w-2\.5{width:0.625rem}.w-3{width:0.75rem}.w-3\.5{width:0.875rem}.w-4{width:1rem}.w-44{width:11rem}.w-5{width:1.25rem}.w-52{width:13rem}.w-6{width:1.5rem}.w-7{width:1.75rem}.w-9{width:2.25rem}.w-full{width:100%}.min-w-0{min-width:0px}.max-w-\[1920px\]{max-width:1920px}.max-w-md{max-width:28rem}.flex-1{flex:1 1 0%}.shrink-0{flex-shrink:0}.border-collapse{border-collapse:collapse}@keyframes ping{75%, 100%{transform:scale(2);opacity:0}}.animate-ping{animation:ping 1s cubic-bezier(0, 0, 0.2, 1) infinite}@keyframes pulse{50%{opacity:.5}}.animate-pulse{animation:pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite}.cursor-pointer{cursor:pointer}.grid-cols-1{grid-template-columns:repeat(1, minmax(0, 1fr))}.grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-start{align-items:flex-start}.items-end{align-items:flex-end}.items-center{align-items:center}.items-baseline{align-items:baseline}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-0\.5{gap:0.125rem}.gap-1{gap:0.25rem}.gap-1\.5{gap:0.375rem}.gap-2{gap:0.5rem}.gap-2\.5{gap:0.625rem}.gap-3{gap:0.75rem}.gap-4{gap:1rem}.gap-6{gap:1.5rem}.gap-8{gap:2rem}.space-y-3 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.75rem * var(--tw-space-y-reverse))}.space-y-6 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.5rem * var(--tw-space-y-reverse))}.divide-y > :not([hidden]) ~ :not([hidden]){--tw-divide-y-reverse:0;border-top-width:calc(1px * calc(1 - var(--tw-divide-y-reverse)));border-bottom-width:calc(1px * var(--tw-divide-y-reverse))}.divide-white\/5 > :not([hidden]) ~ :not([hidden]){border-color:rgb(255 255 255 / 0.05)}.overflow-hidden{overflow:hidden}.overflow-x-auto{overflow-x:auto}.overflow-y-auto{overflow-y:auto}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rounded{border-radius:0.25rem}.rounded-2xl{border-radius:1rem}.rounded-\[11px\]{border-radius:11px}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:0.5rem}.rounded-md{border-radius:0.375rem}.rounded-xl{border-radius:0.75rem}.border{border-width:1px}.border-0{border-width:0px}.border-b{border-bottom-width:1px}.border-l{border-left-width:1px}.border-r{border-right-width:1px}.border-t{border-top-width:1px}.border-cyan-500\/20{border-color:rgb(6 182 212 / 0.2)}.border-cyan-500\/30{border-color:rgb(6 182 212 / 0.3)}.border-emerald-500\/20{border-color:rgb(16 185 129 / 0.2)}.border-emerald-500\/25{border-color:rgb(16 185 129 / 0.25)}.border-emerald-500\/30{border-color:rgb(16 185 129 / 0.3)}.border-slate-700{--tw-border-opacity:1;border-color:rgb(51 65 85 / var(--tw-border-opacity, 1))}.border-white\/10{border-color:rgb(255 255 255 / 0.1)}.border-white\/5{border-color:rgb(255 255 255 / 0.05)}.bg-\[\#070b12\]{--tw-bg-opacity:1;background-color:rgb(7 11 18 / var(--tw-bg-opacity, 1))}.bg-\[\#080d16\]{--tw-bg-opacity:1;background-color:rgb(8 13 22 / var(--tw-bg-opacity, 1))}.bg-\[\#080d16\]\/90{background-color:rgb(8 13 22 / 0.9)}.bg-\[\#090e18\]{--tw-bg-opacity:1;background-color:rgb(9 14 24 / var(--tw-bg-opacity, 1))}.bg-\[\#090f1a\]{--tw-bg-opacity:1;background-color:rgb(9 15 26 / var(--tw-bg-opacity, 1))}.bg-\[\#090f1a\]\/60{background-color:rgb(9 15 26 / 0.6)}.bg-\[\#090f1a\]\/80{background-color:rgb(9 15 26 / 0.8)}.bg-\[\#0a101b\]{--tw-bg-opacity:1;background-color:rgb(10 16 27 / var(--tw-bg-opacity, 1))}.bg-\[\#0c1322\]{--tw-bg-opacity:1;background-color:rgb(12 19 34 / var(--tw-bg-opacity, 1))}.bg-\[\#0c1626\]{--tw-bg-opacity:1;background-color:rgb(12 22 38 / var(--tw-bg-opacity, 1))}.bg-\[\#0d1524\]{--tw-bg-opacity:1;background-color:rgb(13 21 36 / var(--tw-bg-opacity, 1))}.bg-amber-400\/80{background-color:rgb(251 191 36 / 0.8)}.bg-amber-500{--tw-bg-opacity:1;background-color:rgb(245 158 11 / var(--tw-bg-opacity, 1))}.bg-amber-500\/80{background-color:rgb(245 158 11 / 0.8)}.bg-cyan-400{--tw-bg-opacity:1;background-color:rgb(34 211 238 / var(--tw-bg-opacity, 1))}.bg-cyan-500{--tw-bg-opacity:1;background-color:rgb(6 182 212 / var(--tw-bg-opacity, 1))}.bg-cyan-500\/10{background-color:rgb(6 182 212 / 0.1)}.bg-cyan-500\/15{background-color:rgb(6 182 212 / 0.15)}.bg-cyan-950\/60{background-color:rgb(8 51 68 / 0.6)}.bg-emerald-400{--tw-bg-opacity:1;background-color:rgb(52 211 153 / var(--tw-bg-opacity, 1))}.bg-emerald-500{--tw-bg-opacity:1;background-color:rgb(16 185 129 / var(--tw-bg-opacity, 1))}.bg-emerald-500\/10{background-color:rgb(16 185 129 / 0.1)}.bg-emerald-500\/15{background-color:rgb(16 185 129 / 0.15)}.bg-indigo-500{--tw-bg-opacity:1;background-color:rgb(99 102 241 / var(--tw-bg-opacity, 1))}.bg-orange-500{--tw-bg-opacity:1;background-color:rgb(249 115 22 / var(--tw-bg-opacity, 1))}.bg-orange-500\/80{background-color:rgb(249 115 22 / 0.8)}.bg-rose-500\/80{background-color:rgb(244 63 94 / 0.8)}.bg-sky-500{--tw-bg-opacity:1;background-color:rgb(14 165 233 / var(--tw-bg-opacity, 1))}.bg-sky-500\/80{background-color:rgb(14 165 233 / 0.8)}.bg-slate-600{--tw-bg-opacity:1;background-color:rgb(71 85 105 / var(--tw-bg-opacity, 1))}.bg-slate-800{--tw-bg-opacity:1;background-color:rgb(30 41 59 / var(--tw-bg-opacity, 1))}.bg-slate-800\/40{background-color:rgb(30 41 59 / 0.4)}.bg-slate-900{--tw-bg-opacity:1;background-color:rgb(15 23 42 / var(--tw-bg-opacity, 1))}.bg-transparent{background-color:transparent}.bg-gradient-to-b{background-image:linear-gradient(to bottom, var(--tw-gradient-stops))}.bg-gradient-to-r{background-image:linear-gradient(to right, var(--tw-gradient-stops))}.bg-gradient-to-tr{background-image:linear-gradient(to top right, var(--tw-gradient-stops))}.from-\[\#0e1626\]{--tw-gradient-from:#0e1626 var(--tw-gradient-from-position);--tw-gradient-to:rgb(14 22 38 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-cyan-500{--tw-gradient-from:#06b6d4 var(--tw-gradient-from-position);--tw-gradient-to:rgb(6 182 212 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-cyan-600{--tw-gradient-from:#0891b2 var(--tw-gradient-from-position);--tw-gradient-to:rgb(8 145 178 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-emerald-400{--tw-gradient-from:#34d399 var(--tw-gradient-from-position);--tw-gradient-to:rgb(52 211 153 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-emerald-500{--tw-gradient-from:#10b981 var(--tw-gradient-from-position);--tw-gradient-to:rgb(16 185 129 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-emerald-600{--tw-gradient-from:#059669 var(--tw-gradient-from-position);--tw-gradient-to:rgb(5 150 105 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.to-\[\#0a101b\]{--tw-gradient-to:#0a101b var(--tw-gradient-to-position)}.to-blue-500{--tw-gradient-to:#3b82f6 var(--tw-gradient-to-position)}.to-cyan-400{--tw-gradient-to:#22d3ee var(--tw-gradient-to-position)}.to-cyan-500{--tw-gradient-to:#06b6d4 var(--tw-gradient-to-position)}.to-teal-300{--tw-gradient-to:#5eead4 var(--tw-gradient-to-position)}.p-0{padding:0px}.p-1{padding:0.25rem}.p-1\.5{padding:0.375rem}.p-2{padding:0.5rem}.p-2\.5{padding:0.625rem}.p-3{padding:0.75rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}.p-\[1px\]{padding:1px}.px-1\.5{padding-left:0.375rem;padding-right:0.375rem}.px-2{padding-left:0.5rem;padding-right:0.5rem}.px-2\.5{padding-left:0.625rem;padding-right:0.625rem}.px-3{padding-left:0.75rem;padding-right:0.75rem}.px-3\.5{padding-left:0.875rem;padding-right:0.875rem}.px-4{padding-left:1rem;padding-right:1rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-0\.5{padding-top:0.125rem;padding-bottom:0.125rem}.py-1{padding-top:0.25rem;padding-bottom:0.25rem}.py-1\.5{padding-top:0.375rem;padding-bottom:0.375rem}.py-2{padding-top:0.5rem;padding-bottom:0.5rem}.py-2\.5{padding-top:0.625rem;padding-bottom:0.625rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.py-4{padding-top:1rem;padding-bottom:1rem}.pb-1{padding-bottom:0.25rem}.pb-2{padding-bottom:0.5rem}.pl-2\.5{padding-left:0.625rem}.pl-3{padding-left:0.75rem}.pl-3\.5{padding-left:0.875rem}.pl-4{padding-left:1rem}.pl-8{padding-left:2rem}.pl-9{padding-left:2.25rem}.pr-14{padding-right:3.5rem}.pr-2\.5{padding-right:0.625rem}.pr-3{padding-right:0.75rem}.pt-3{padding-top:0.75rem}.text-left{text-align:left}.text-center{text-align:center}.text-right{text-align:right}.font-mono{font-family:JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace}.font-sans{font-family:Inter, system-ui, -apple-system, sans-serif}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-\[10px\]{font-size:10px}.text-\[11px\]{font-size:11px}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xs{font-size:0.75rem;line-height:1rem}.font-bold{font-weight:700}.font-extrabold{font-weight:800}.font-medium{font-weight:500}.font-semibold{font-weight:600}.uppercase{text-transform:uppercase}.tracking-tight{letter-spacing:-0.025em}.tracking-wide{letter-spacing:0.025em}.tracking-wider{letter-spacing:0.05em}.text-amber-400{--tw-text-opacity:1;color:rgb(251 191 36 / var(--tw-text-opacity, 1))}.text-cyan-300{--tw-text-opacity:1;color:rgb(103 232 249 / var(--tw-text-opacity, 1))}.text-cyan-400{--tw-text-opacity:1;color:rgb(34 211 238 / var(--tw-text-opacity, 1))}.text-cyan-400\/80{color:rgb(34 211 238 / 0.8)}.text-emerald-400{--tw-text-opacity:1;color:rgb(52 211 153 / var(--tw-text-opacity, 1))}.text-emerald-400\/80{color:rgb(52 211 153 / 0.8)}.text-indigo-300{--tw-text-opacity:1;color:rgb(165 180 252 / var(--tw-text-opacity, 1))}.text-indigo-400{--tw-text-opacity:1;color:rgb(129 140 248 / var(--tw-text-opacity, 1))}.text-orange-400{--tw-text-opacity:1;color:rgb(251 146 60 / var(--tw-text-opacity, 1))}.text-rose-400{--tw-text-opacity:1;color:rgb(251 113 133 / var(--tw-text-opacity, 1))}.text-sky-400{--tw-text-opacity:1;color:rgb(56 189 248 / var(--tw-text-opacity, 1))}.text-slate-200{--tw-text-opacity:1;color:rgb(226 232 240 / var(--tw-text-opacity, 1))}.text-slate-300{--tw-text-opacity:1;color:rgb(203 213 225 / var(--tw-text-opacity, 1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184 / var(--tw-text-opacity, 1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139 / var(--tw-text-opacity, 1))}.text-slate-950{--tw-text-opacity:1;color:rgb(2 6 23 / var(--tw-text-opacity, 1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.placeholder-slate-400::placeholder{--tw-placeholder-opacity:1;color:rgb(148 163 184 / var(--tw-placeholder-opacity, 1))}.placeholder-slate-500::placeholder{--tw-placeholder-opacity:1;color:rgb(100 116 139 / var(--tw-placeholder-opacity, 1))}.opacity-75{opacity:0.75}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-xl{--tw-shadow:0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 20px 25px -5px var(--tw-shadow-color), 0 8px 10px -6px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-cyan-500\/40{--tw-shadow-color:rgb(6 182 212 / 0.4);--tw-shadow:var(--tw-shadow-colored)}.shadow-emerald-400\/50{--tw-shadow-color:rgb(52 211 153 / 0.5);--tw-shadow:var(--tw-shadow-colored)}.shadow-emerald-500\/20{--tw-shadow-color:rgb(16 185 129 / 0.2);--tw-shadow:var(--tw-shadow-colored)}.backdrop-blur-md{--tw-backdrop-blur:blur(12px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-colors{transition-property:color, background-color, border-color, fill, stroke, -webkit-text-decoration-color;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, -webkit-text-decoration-color;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-transform{transition-property:transform;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.duration-300{transition-duration:300ms}.selection\:bg-emerald-500\/30 *::selection{background-color:rgb(16 185 129 / 0.3)}.selection\:text-emerald-200 *::selection{--tw-text-opacity:1;color:rgb(167 243 208 / var(--tw-text-opacity, 1))}.selection\:bg-emerald-500\/30::selection{background-color:rgb(16 185 129 / 0.3)}.selection\:text-emerald-200::selection{--tw-text-opacity:1;color:rgb(167 243 208 / var(--tw-text-opacity, 1))}.hover\:scale-105:hover{--tw-scale-x:1.05;--tw-scale-y:1.05;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.hover\:scale-\[1\.02\]:hover{--tw-scale-x:1.02;--tw-scale-y:1.02;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.hover\:border-amber-500\/40:hover{border-color:rgb(245 158 11 / 0.4)}.hover\:border-cyan-500\/40:hover{border-color:rgb(6 182 212 / 0.4)}.hover\:border-emerald-500\/30:hover{border-color:rgb(16 185 129 / 0.3)}.hover\:border-emerald-500\/40:hover{border-color:rgb(16 185 129 / 0.4)}.hover\:border-indigo-500\/40:hover{border-color:rgb(99 102 241 / 0.4)}.hover\:border-orange-500\/40:hover{border-color:rgb(249 115 22 / 0.4)}.hover\:border-rose-500\/40:hover{border-color:rgb(244 63 94 / 0.4)}.hover\:border-sky-500\/40:hover{border-color:rgb(14 165 233 / 0.4)}.hover\:border-slate-500\/40:hover{border-color:rgb(100 116 139 / 0.4)}.hover\:border-slate-600:hover{--tw-border-opacity:1;border-color:rgb(71 85 105 / var(--tw-border-opacity, 1))}.hover\:border-slate-700:hover{--tw-border-opacity:1;border-color:rgb(51 65 85 / var(--tw-border-opacity, 1))}.hover\:bg-slate-800\/30:hover{background-color:rgb(30 41 59 / 0.3)}.hover\:bg-slate-800\/40:hover{background-color:rgb(30 41 59 / 0.4)}.hover\:bg-slate-800\/50:hover{background-color:rgb(30 41 59 / 0.5)}.hover\:bg-slate-800\/60:hover{background-color:rgb(30 41 59 / 0.6)}.hover\:from-emerald-300:hover{--tw-gradient-from:#6ee7b7 var(--tw-gradient-from-position);--tw-gradient-to:rgb(110 231 183 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.hover\:to-teal-200:hover{--tw-gradient-to:#99f6e4 var(--tw-gradient-to-position)}.hover\:text-emerald-300:hover{--tw-text-opacity:1;color:rgb(110 231 183 / var(--tw-text-opacity, 1))}.hover\:text-slate-200:hover{--tw-text-opacity:1;color:rgb(226 232 240 / var(--tw-text-opacity, 1))}.hover\:text-white:hover{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.hover\:underline:hover{-webkit-text-decoration-line:underline;text-decoration-line:underline}.focus\:border-emerald-500\/50:focus{border-color:rgb(16 185 129 / 0.5)}.focus\:outline-none:focus{outline:2px solid transparent;outline-offset:2px}.focus\:ring-0:focus{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(0px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000)}.focus\:ring-1:focus{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000)}.focus\:ring-emerald-500\/50:focus{--tw-ring-color:rgb(16 185 129 / 0.5)}.active\:scale-\[0\.98\]:active{--tw-scale-x:0.98;--tw-scale-y:0.98;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.disabled\:opacity-40:disabled{opacity:0.4}.group:hover .group-hover\:bg-amber-400{--tw-bg-opacity:1;background-color:rgb(251 191 36 / var(--tw-bg-opacity, 1))}.group:hover .group-hover\:bg-cyan-400{--tw-bg-opacity:1;background-color:rgb(34 211 238 / var(--tw-bg-opacity, 1))}.group:hover .group-hover\:bg-orange-400{--tw-bg-opacity:1;background-color:rgb(251 146 60 / var(--tw-bg-opacity, 1))}.group:hover .group-hover\:bg-sky-400{--tw-bg-opacity:1;background-color:rgb(56 189 248 / var(--tw-bg-opacity, 1))}.group:hover .group-hover\:bg-slate-500{--tw-bg-opacity:1;background-color:rgb(100 116 139 / var(--tw-bg-opacity, 1))}.group:hover .group-hover\:bg-transparent{background-color:transparent}.group:hover .group-hover\:text-emerald-300{--tw-text-opacity:1;color:rgb(110 231 183 / var(--tw-text-opacity, 1))}.group:hover .group-hover\:text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}@media (min-width: 640px){.sm\:block{display:block}.sm\:flex{display:flex}.sm\:grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.sm\:grid-cols-5{grid-template-columns:repeat(5, minmax(0, 1fr))}.sm\:flex-row{flex-direction:row}.sm\:px-6{padding-left:1.5rem;padding-right:1.5rem}.sm\:pb-0{padding-bottom:0px}}@media (min-width: 768px){.md\:flex{display:flex}}@media (min-width: 1024px){.lg\:col-span-4{grid-column:span 4 / span 4}.lg\:col-span-5{grid-column:span 5 / span 5}.lg\:col-span-7{grid-column:span 7 / span 7}.lg\:col-span-8{grid-column:span 8 / span 8}.lg\:block{display:block}.lg\:grid-cols-12{grid-template-columns:repeat(12, minmax(0, 1fr))}.lg\:grid-cols-4{grid-template-columns:repeat(4, minmax(0, 1fr))}}</style></head>
+<body class="min-h-screen bg-[#070b12] text-slate-200 antialiased selection:bg-emerald-500/30 selection:text-emerald-200">
+<!-- BEGIN: ApplicationLayout -->
+<div class="flex min-h-screen w-full">
+<!-- BEGIN: LeftIconSidebar -->
+<!-- Minimalist quick action sidebar matching the aerospace console aesthetic -->
+<aside class="w-16 border-r border-white/5 bg-[#080d16] flex flex-col items-center py-4 justify-between z-30 shrink-0" data-purpose="sidebar-nav">
+<div class="flex flex-col items-center gap-6">
+<!-- Brand Star Glyph -->
+<a class="h-10 w-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-cyan-500 p-[1px] flex items-center justify-center shadow-lg shadow-emerald-500/20 group" href="file:///C:/Users/User/Documents/MyProject/My%20Idea/Antigravity%20project/signalmap/designs/stitch-15327396699438504010/dashboard_dark.html#">
+<div class="h-full w-full bg-[#090e18] rounded-[11px] flex items-center justify-center group-hover:bg-transparent transition-all duration-300">
+<svg class="w-5 h-5 text-emerald-400 group-hover:text-white transition-colors" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+<path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07L19.07 4.93" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+</a>
+<!-- Main Workspace Icons -->
+<nav class="flex flex-col items-center gap-3">
+<button class="w-10 h-10 rounded-lg flex items-center justify-center text-emerald-400 bg-emerald-500/10 border border-emerald-500/30" title="Dashboard Overview">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+<rect height="7" rx="1.5" width="7" x="3" y="3"></rect>
+<rect height="7" rx="1.5" width="7" x="14" y="3"></rect>
+<rect height="7" rx="1.5" width="7" x="14" y="14"></rect>
+<rect height="7" rx="1.5" width="7" x="3" y="14"></rect>
+</svg>
+</button>
+<button class="w-10 h-10 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors" title="Global Orbit">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+<circle cx="12" cy="12" r="9"></circle>
+<path d="M3.6 9h16.8M3.6 15h16.8M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" stroke-linecap="round"></path>
+</svg>
+</button>
+<button class="w-10 h-10 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors" title="Topology Graph">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+<circle cx="6" cy="6" r="3"></circle>
+<circle cx="18" cy="6" r="3"></circle>
+<circle cx="12" cy="18" r="3"></circle>
+<path d="M8.5 7.5L10 16m5.5-8.5L14 16" stroke-linecap="round"></path>
+</svg>
+</button>
+<button class="w-10 h-10 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors" title="Telemetry Stream">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+<path d="M4 6h16M4 10h16M4 14h16M4 18h16" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+<button class="w-10 h-10 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors" title="Audit Log Playback">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+<button class="w-10 h-10 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors" title="Security Diagnostics">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+<path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+</nav>
+</div>
+<!-- Lower Utilities -->
+<div class="flex flex-col items-center gap-3">
+<button class="w-10 h-10 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors" title="Settings">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+<path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" stroke-linecap="round" stroke-linejoin="round"></path>
+<circle cx="12" cy="12" r="3"></circle>
+</svg>
+</button>
+<!-- User Avatar -->
+<div class="h-9 w-9 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-500 p-[1px] cursor-pointer hover:scale-105 transition-transform" title="User Session: Flight Engineer T">
+<div class="h-full w-full rounded-full bg-[#0a101b] flex items-center justify-center font-bold text-xs text-cyan-300">
+            T
+          </div>
+</div>
+</div>
+</aside>
+<!-- END: LeftIconSidebar -->
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+<!-- BEGIN: MainHeader -->
+<header class="sticky top-0 z-20 border-b border-white/5 bg-[#080d16]/90 backdrop-blur-md px-6 py-3" data-purpose="primary-header">
+<div class="flex items-center justify-between gap-4">
+<!-- Left: Brand, Breadcrumb & Context -->
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<span class="text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
+<span class="text-emerald-400">⚡</span> SignalMap
+              </span>
+<span class="text-xs px-2 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-mono tracking-wide">
+                v4.8-aero
+              </span>
+</div>
+<!-- Workspace breadcrumb -->
+<div class="hidden md:flex items-center gap-2 text-xs text-slate-400 pl-3 border-l border-white/10">
+<div class="flex items-center gap-1.5 bg-slate-900 px-2.5 py-1 rounded-md border border-white/5 hover:border-slate-700 cursor-pointer transition-colors">
+<span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+<span class="text-slate-200 font-medium">Aerospace Live Cluster</span>
+<svg class="w-3.5 h-3.5 text-slate-400 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+</div>
+<!-- Center: Omnibar Search with Shortcut -->
+<div class="flex-1 max-w-md hidden lg:block">
+<div class="relative">
+<div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+<svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<input class="w-full bg-[#0d1524] border border-white/10 text-xs rounded-lg pl-9 pr-14 py-2 text-slate-200 placeholder-slate-400 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all font-mono" placeholder="Search telemetry, IPs, processes, components, or ports..." type="text">
+<div class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none">
+<kbd class="px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-slate-800 border border-slate-700 rounded">⌘K</kbd>
+</div>
+</div>
+</div>
+<!-- Right: System Live Stats & Global Actions -->
+<div class="flex items-center gap-3">
+<!-- Realtime Telemetry Pulse Badge -->
+<div class="flex items-center gap-2 bg-[#0c1626] border border-emerald-500/30 px-3 py-1.5 rounded-lg shadow-sm">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+</span>
+<span class="text-[11px] font-bold text-emerald-400 tracking-wider font-mono">LIVE</span>
+<!-- Bandwidth In/Out -->
+<div class="hidden sm:flex items-center gap-2.5 border-l border-white/10 pl-2.5 text-[11px] font-mono text-slate-400">
+<span class="flex items-center gap-1 text-slate-300">
+<span class="text-cyan-400">↓</span> 0.0 MB/s
+                </span>
+<span class="flex items-center gap-1 text-slate-300">
+<span class="text-emerald-400">↑</span> 0.0 MB/s
+                </span>
+</div>
+</div>
+<!-- Notifications -->
+<button class="relative p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
+</button>
+<!-- Quick Export / Share -->
+<button class="p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors hidden sm:block" title="Export telemetry stream">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+</div>
+</div>
+</header>
+<!-- END: MainHeader -->
+<!-- BEGIN: SecondaryToolbar -->
+<!-- Tab Navigation, Source Selector and Primary CTA -->
+<section class="border-b border-white/5 bg-[#0a101b] px-6 py-2.5" data-purpose="secondary-nav-toolbar">
+<div class="flex flex-wrap items-center justify-between gap-4">
+<!-- View Navigation Tabs -->
+<nav class="flex items-center gap-1 text-xs font-medium overflow-x-auto pb-1 sm:pb-0">
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 transition-all font-semibold shadow-sm">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect height="7" width="7" x="3" y="3"></rect><rect height="7" width="7" x="14" y="3"></rect><rect height="7" width="7" x="14" y="14"></rect><rect height="7" width="7" x="3" y="14"></rect></svg>
+              Dashboard
+            </button>
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle></svg>
+              3D Globe
+            </button>
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"></circle><circle cx="18" cy="6" r="3"></circle><circle cx="12" cy="18" r="3"></circle></svg>
+              Topology
+            </button>
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+              Telemetry Grid
+            </button>
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Playback
+            </button>
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors">
+<span class="font-mono text-xs">&gt;_</span>
+              Diagnostics
+            </button>
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+              Modules
+            </button>
+</nav>
+<!-- Action Controls Group -->
+<div class="flex items-center gap-3 ml-auto">
+<!-- Import Logs Button -->
+<button class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-900 border border-white/10 rounded-lg hover:border-slate-600 transition-colors">
+<svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Import Logs</span>
+</button>
+<!-- Source Filter Dropdown -->
+<div class="flex items-center bg-slate-900 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-slate-300">
+<span class="text-slate-400 uppercase text-[10px] tracking-wider font-semibold mr-1.5">Source:</span>
+<select class="bg-transparent text-slate-200 font-medium border-0 p-0 text-xs focus:ring-0 cursor-pointer">
+<option class="bg-slate-900">All Sources</option>
+<option class="bg-slate-900">Aerospace Sat-Link 01</option>
+<option class="bg-slate-900">Ground Station Node</option>
+<option class="bg-slate-900">Edge Gateway</option>
+</select>
+</div>
+<!-- Primary Add Component CTA -->
+<button class="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-slate-950 bg-gradient-to-r from-emerald-400 to-teal-300 hover:from-emerald-300 hover:to-teal-200 rounded-lg shadow-sm shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+<path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span>Add Component</span>
+</button>
+</div>
+</div>
+</section>
+<!-- END: SecondaryToolbar -->
+<!-- Main Dashboard Canvas Body -->
+<main class="flex-1 p-6 space-y-6 max-w-[1920px] mx-auto w-full">
+<!-- BEGIN: TopKPISection -->
+<!-- 4 Key Telemetry Metrics with High-Tech Monospace Data -->
+<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-purpose="kpi-metric-cards">
+<!-- KPI 1: Active Telemetry Sockets -->
+<div class="relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-b from-[#0e1626] to-[#0a101b] p-4 group hover:border-emerald-500/40 transition-all duration-300">
+<div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+<span class="flex items-center gap-1.5 font-medium tracking-wide">
+<span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                Active telemetry sockets
+              </span>
+<span class="px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                +12 live
+              </span>
+</div>
+<div class="flex items-baseline justify-between">
+<div class="text-3xl font-extrabold text-white tracking-tight font-mono">12</div>
+<div class="text-[11px] text-emerald-400/80 font-mono flex items-center gap-1">
+<svg class="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 10l7-7m0 0l7 7m-7-7v18" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                100% nominal
+              </div>
+</div>
+<!-- Progress Line Indicator -->
+<div class="mt-3 h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 rounded-full w-full"></div>
+</div>
+</div>
+<!-- KPI 2: Data Processed -->
+<div class="relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-b from-[#0e1626] to-[#0a101b] p-4 group hover:border-cyan-500/40 transition-all duration-300">
+<div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+<span class="flex items-center gap-1.5 font-medium tracking-wide">
+<svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                Data processed
+              </span>
+<span class="px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
+                +61 pkts
+              </span>
+</div>
+<div class="flex items-baseline justify-between">
+<div class="text-3xl font-extrabold text-white tracking-tight font-mono">142 <span class="text-lg font-semibold text-slate-400">MB</span></div>
+<div class="text-[11px] text-cyan-400/80 font-mono">5.2 kB/s avg</div>
+</div>
+<!-- Progress Line Indicator -->
+<div class="mt-3 h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full" style="width: 68%;"></div>
+</div>
+</div>
+<!-- KPI 3: Host Processes -->
+<div class="relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-b from-[#0e1626] to-[#0a101b] p-4 group hover:border-indigo-500/40 transition-all duration-300">
+<div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+<span class="flex items-center gap-1.5 font-medium tracking-wide">
+<svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                Host processes
+              </span>
+<span class="text-[11px] font-mono text-slate-400">active listeners</span>
+</div>
+<div class="flex items-baseline justify-between">
+<div class="text-3xl font-extrabold text-white tracking-tight font-mono">7</div>
+<div class="text-[11px] text-indigo-300 font-mono">0 faulted</div>
+</div>
+<!-- Progress Line Indicator -->
+<div class="mt-3 h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-indigo-500 rounded-full" style="width: 45%;"></div>
+</div>
+</div>
+<!-- KPI 4: Security Threat Signals -->
+<div class="relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-b from-[#0e1626] to-[#0a101b] p-4 group hover:border-rose-500/40 transition-all duration-300">
+<div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+<span class="flex items-center gap-1.5 font-medium tracking-wide">
+<svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                Security threat signals
+              </span>
+<span class="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Shielded</span>
+</div>
+<div class="flex items-baseline justify-between">
+<div class="text-3xl font-extrabold text-white tracking-tight font-mono">0</div>
+<div class="text-[11px] text-slate-400 font-mono">0 anomalies detected</div>
+</div>
+<!-- Progress Line Indicator -->
+<div class="mt-3 h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-emerald-500 rounded-full w-full"></div>
+</div>
+</div>
+</section>
+<!-- END: TopKPISection -->
+<!-- BEGIN: MiddleVisualizations -->
+<!-- Clearance Rate Radial Chart & Protocol Distribution Bars -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-6" data-purpose="charts-section">
+<!-- Left: Telemetry Clearance Rate Gauge -->
+<div class="lg:col-span-5 rounded-2xl border border-white/10 bg-[#0c1322] p-6 shadow-xl flex flex-col justify-between">
+<div class="flex items-center justify-between mb-4">
+<div>
+<h3 class="text-sm font-semibold text-white tracking-wide">Telemetry clearance rate</h3>
+<p class="text-xs text-slate-400">Automated deep packet inspection verdict</p>
+</div>
+<div class="flex items-center gap-1 bg-slate-900 border border-white/5 p-1 rounded-lg text-[11px]">
+<button class="px-2 py-0.5 rounded bg-slate-800 text-white font-medium">1h</button>
+<button class="px-2 py-0.5 rounded text-slate-400 hover:text-white">6h</button>
+<button class="px-2 py-0.5 rounded text-slate-400 hover:text-white">24h</button>
+</div>
+</div>
+<!-- Gauge Radial Display -->
+<div class="flex flex-col sm:flex-row items-center justify-center gap-8 py-3">
+<div class="relative w-44 h-44 flex items-center justify-center">
+<svg class="w-full h-full donut-gauge" viewBox="0 0 100 100">
+<!-- Background Track -->
+<circle cx="50" cy="50" fill="transparent" r="40" stroke="#162235" stroke-width="9"></circle>
+<!-- Progress Emerald Track -->
+<circle class="donut-glow" cx="50" cy="50" fill="transparent" r="40" stroke="#10b981" stroke-dasharray="251.2" stroke-dashoffset="0" stroke-linecap="round" stroke-width="9"></circle>
+</svg>
+<!-- Gauge Inner Data -->
+<div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+<span class="text-2xl font-bold font-mono tracking-tight text-white">100.0%</span>
+<span class="text-[11px] font-mono text-emerald-400 flex items-center gap-0.5 mt-0.5">
+<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 10l7-7m0 0l7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></svg>
+                    12 active
+                  </span>
+</div>
+</div>
+<!-- Legend -->
+<div class="flex flex-col gap-3 font-sans text-xs">
+<div class="flex items-center gap-2.5">
+<span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50"></span>
+<span class="text-slate-300 font-medium">Verified Clean</span>
+<span class="ml-auto font-mono text-emerald-400 font-bold pl-4">100%</span>
+</div>
+<div class="flex items-center gap-2.5">
+<span class="w-2.5 h-2.5 rounded-full bg-amber-400/80"></span>
+<span class="text-slate-400">Unclassified</span>
+<span class="ml-auto font-mono text-slate-500 pl-4">0%</span>
+</div>
+<div class="flex items-center gap-2.5">
+<span class="w-2.5 h-2.5 rounded-full bg-rose-500/80"></span>
+<span class="text-slate-400">Threat Flags</span>
+<span class="ml-auto font-mono text-slate-500 pl-4">0%</span>
+</div>
+<div class="pt-3 border-t border-white/5 text-[11px] text-slate-500 flex items-center gap-1">
+<svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                  Zero payload drift detected
+                </div>
+</div>
+</div>
+<!-- Card Bottom Bar -->
+<div class="mt-2 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+<span>Sensor: EDR-Kernel-v2</span>
+<span class="text-emerald-400">Heuristic Guard Active</span>
+</div>
+</div>
+<!-- Right: Traffic by Protocol Distribution -->
+<div class="lg:col-span-7 rounded-2xl border border-white/10 bg-[#0c1322] p-6 shadow-xl flex flex-col justify-between">
+<div class="flex items-center justify-between mb-4">
+<div>
+<h3 class="text-sm font-semibold text-white tracking-wide">Traffic by protocol distribution</h3>
+<p class="text-xs text-slate-400">Breakdown across 50 observed transport sockets</p>
+</div>
+<div class="flex items-center gap-2 text-xs text-slate-400">
+<span class="font-mono text-[11px] bg-slate-900 border border-white/5 px-2.5 py-1 rounded-md">Total Packets: 4,821</span>
+</div>
+</div>
+<!-- Protocol Column Breakdown Panels -->
+<div class="grid grid-cols-2 sm:grid-cols-5 gap-3 my-2">
+<!-- TCP Protocol -->
+<div class="bg-[#090f1a] border border-white/5 rounded-xl p-3 flex flex-col justify-between relative overflow-hidden group hover:border-amber-500/40 transition-colors">
+<div>
+<span class="text-[11px] uppercase tracking-wider text-slate-400 font-mono font-medium">TCP</span>
+<div class="text-2xl font-bold font-mono text-white mt-1">12</div>
+</div>
+<div class="mt-4">
+<div class="h-16 w-full bg-slate-800/40 rounded flex items-end p-1">
+<div class="w-full bg-amber-500/80 rounded group-hover:bg-amber-400 transition-colors" style="height: 54%;"></div>
+</div>
+<div class="flex justify-between items-center mt-2 text-[11px] font-mono">
+<span class="text-slate-400">Share</span>
+<span class="text-amber-400 font-bold">24.0%</span>
+</div>
+</div>
+</div>
+<!-- UDP Protocol -->
+<div class="bg-[#090f1a] border border-white/5 rounded-xl p-3 flex flex-col justify-between relative overflow-hidden group hover:border-orange-500/40 transition-colors">
+<div>
+<span class="text-[11px] uppercase tracking-wider text-slate-400 font-mono font-medium">UDP</span>
+<div class="text-2xl font-bold font-mono text-white mt-1">8</div>
+</div>
+<div class="mt-4">
+<div class="h-16 w-full bg-slate-800/40 rounded flex items-end p-1">
+<div class="w-full bg-orange-500/80 rounded group-hover:bg-orange-400 transition-colors" style="height: 36%;"></div>
+</div>
+<div class="flex justify-between items-center mt-2 text-[11px] font-mono">
+<span class="text-slate-400">Share</span>
+<span class="text-orange-400 font-bold">16.0%</span>
+</div>
+</div>
+</div>
+<!-- HTTPS Protocol -->
+<div class="bg-[#090f1a] border border-white/5 rounded-xl p-3 flex flex-col justify-between relative overflow-hidden group hover:border-cyan-500/40 transition-colors">
+<div>
+<span class="text-[11px] uppercase tracking-wider text-slate-400 font-mono font-medium">HTTPS</span>
+<div class="text-2xl font-bold font-mono text-cyan-300 mt-1">22</div>
+</div>
+<div class="mt-4">
+<div class="h-16 w-full bg-slate-800/40 rounded flex items-end p-1">
+<div class="w-full bg-cyan-500 rounded group-hover:bg-cyan-400 transition-colors shadow-sm shadow-cyan-500/40" style="height: 100%;"></div>
+</div>
+<div class="flex justify-between items-center mt-2 text-[11px] font-mono">
+<span class="text-slate-400">Share</span>
+<span class="text-cyan-400 font-bold">44.0%</span>
+</div>
+</div>
+</div>
+<!-- HTTP Protocol -->
+<div class="bg-[#090f1a] border border-white/5 rounded-xl p-3 flex flex-col justify-between relative overflow-hidden group hover:border-sky-500/40 transition-colors">
+<div>
+<span class="text-[11px] uppercase tracking-wider text-slate-400 font-mono font-medium">HTTP</span>
+<div class="text-2xl font-bold font-mono text-white mt-1">5</div>
+</div>
+<div class="mt-4">
+<div class="h-16 w-full bg-slate-800/40 rounded flex items-end p-1">
+<div class="w-full bg-sky-500/80 rounded group-hover:bg-sky-400 transition-colors" style="height: 22%;"></div>
+</div>
+<div class="flex justify-between items-center mt-2 text-[11px] font-mono">
+<span class="text-slate-400">Share</span>
+<span class="text-sky-400 font-bold">10.0%</span>
+</div>
+</div>
+</div>
+<!-- Other Protocol -->
+<div class="bg-[#090f1a] border border-white/5 rounded-xl p-3 flex flex-col justify-between relative overflow-hidden group hover:border-slate-500/40 transition-colors">
+<div>
+<span class="text-[11px] uppercase tracking-wider text-slate-400 font-mono font-medium">OTHER</span>
+<div class="text-2xl font-bold font-mono text-white mt-1">3</div>
+</div>
+<div class="mt-4">
+<div class="h-16 w-full bg-slate-800/40 rounded flex items-end p-1">
+<div class="w-full bg-slate-600 rounded group-hover:bg-slate-500 transition-colors" style="height: 14%;"></div>
+</div>
+<div class="flex justify-between items-center mt-2 text-[11px] font-mono">
+<span class="text-slate-400">Share</span>
+<span class="text-slate-400 font-bold">6.0%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Summary Progress Bar -->
+<div class="mt-2 pt-3 border-t border-white/5">
+<div class="w-full h-1.5 rounded-full overflow-hidden flex bg-slate-800">
+<div class="bg-amber-500" style="width: 24%" title="TCP: 24%"></div>
+<div class="bg-orange-500" style="width: 16%" title="UDP: 16%"></div>
+<div class="bg-cyan-500" style="width: 44%" title="HTTPS: 44%"></div>
+<div class="bg-sky-500" style="width: 10%" title="HTTP: 10%"></div>
+<div class="bg-slate-600" style="width: 6%" title="Other: 6%"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- END: MiddleVisualizations -->
+<!-- BEGIN: DataGridAndStreamSection -->
+<!-- Telemetry Components Grid (Left 70%) & Live Activity Stream (Right 30%) -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-6" data-purpose="bottom-grid-and-activity-stream">
+<!-- Telemetry Components Table (8 Cols on LG) -->
+<div class="lg:col-span-8 rounded-2xl border border-white/10 bg-[#0c1322] shadow-xl overflow-hidden flex flex-col">
+<!-- Table Header Toolbar -->
+<div class="p-4 sm:px-6 border-b border-white/5 flex flex-wrap items-center justify-between gap-3">
+<div class="flex items-center gap-3">
+<h3 class="text-sm font-semibold text-white tracking-wide">Active telemetry components</h3>
+<span class="text-xs font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-white/5">12 total</span>
+</div>
+<!-- Filter Search & Quick Actions -->
+<div class="flex items-center gap-2">
+<div class="relative">
+<input class="bg-[#090f1a] border border-white/10 text-xs rounded-lg pl-8 pr-3 py-1.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 w-52 font-mono" placeholder="Filter by name, PID, host..." type="text">
+<svg class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<button class="p-1.5 rounded-lg border border-white/10 text-slate-400 hover:text-white hover:bg-slate-800/60" title="Filter options">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+<button class="p-1.5 rounded-lg border border-white/10 text-slate-400 hover:text-white hover:bg-slate-800/60" title="More options">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<!-- Table Container -->
+<div class="overflow-x-auto flex-1">
+<table class="w-full text-left text-xs border-collapse">
+<thead>
+<tr class="border-b border-white/5 bg-[#090f1a]/60 text-slate-400 font-mono uppercase text-[10px] tracking-wider">
+<th class="py-3 px-4 sm:px-6 font-semibold" scope="col">Component / Process</th>
+<th class="py-3 px-3 font-semibold" scope="col">Category</th>
+<th class="py-3 px-3 font-semibold" scope="col">Status</th>
+<th class="py-3 px-3 font-semibold" scope="col">Remote ASN / Supplier</th>
+<th class="py-3 px-3 font-semibold" scope="col">Target Protocol</th>
+<th class="py-3 px-4 sm:px-6 font-semibold text-right" scope="col">Last Seen</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-white/5 font-sans">
+<!-- Row 1: Antigravity.exe -->
+<tr class="hover:bg-slate-800/30 transition-colors group">
+<td class="py-3 px-4 sm:px-6">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<div>
+<div class="font-medium text-slate-200 group-hover:text-emerald-300 font-mono transition-colors">Antigravity.exe</div>
+<div class="text-[11px] text-slate-500 font-mono">PID-8476</div>
+</div>
+</div>
+</td>
+<td class="py-3 px-3 text-slate-400 font-mono text-[11px]">TELEMETRY</td>
+<td class="py-3 px-3">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Passed
+                      </span>
+</td>
+<td class="py-3 px-3 text-slate-300 font-mono">localhost</td>
+<td class="py-3 px-3 font-mono">
+<span class="bg-slate-900 border border-white/10 px-2 py-0.5 rounded text-[11px] text-slate-300">TCP :63558</span>
+</td>
+<td class="py-3 px-4 sm:px-6 text-right text-slate-400 font-mono text-[11px]">Just now</td>
+</tr>
+<!-- Row 2: opera.exe -->
+<tr class="hover:bg-slate-800/30 transition-colors group">
+<td class="py-3 px-4 sm:px-6">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<div>
+<div class="font-medium text-slate-200 group-hover:text-emerald-300 font-mono transition-colors">opera.exe</div>
+<div class="text-[11px] text-slate-500 font-mono">PID-2456</div>
+</div>
+</div>
+</td>
+<td class="py-3 px-3 text-slate-400 font-mono text-[11px]">TELEMETRY</td>
+<td class="py-3 px-3">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Passed
+                      </span>
+</td>
+<td class="py-3 px-3 text-slate-300 font-mono">local_network</td>
+<td class="py-3 px-3 font-mono">
+<span class="bg-slate-900 border border-white/10 px-2 py-0.5 rounded text-[11px] text-slate-300">TCP :8009</span>
+</td>
+<td class="py-3 px-4 sm:px-6 text-right text-slate-400 font-mono text-[11px]">Just now</td>
+</tr>
+<!-- Row 3: language_server_windows_x64.exe -->
+<tr class="hover:bg-slate-800/30 transition-colors group">
+<td class="py-3 px-4 sm:px-6">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<div>
+<div class="font-medium text-slate-200 group-hover:text-emerald-300 font-mono transition-colors">language_server_windows_x64.exe</div>
+<div class="text-[11px] text-slate-500 font-mono">PID-14380</div>
+</div>
+</div>
+</td>
+<td class="py-3 px-3 text-slate-400 font-mono text-[11px]">TELEMETRY</td>
+<td class="py-3 px-3">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Passed
+                      </span>
+</td>
+<td class="py-3 px-3 text-slate-300 font-mono">Google LLC</td>
+<td class="py-3 px-3 font-mono">
+<span class="bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded text-[11px] text-cyan-300">TCP :443</span>
+</td>
+<td class="py-3 px-4 sm:px-6 text-right text-slate-400 font-mono text-[11px]">Just now</td>
+</tr>
+<!-- Row 4: language_server_windows_x64.exe (Local) -->
+<tr class="hover:bg-slate-800/30 transition-colors group">
+<td class="py-3 px-4 sm:px-6">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<div>
+<div class="font-medium text-slate-200 group-hover:text-emerald-300 font-mono transition-colors">language_server_windows_x64.exe</div>
+<div class="text-[11px] text-slate-500 font-mono">PID-14380</div>
+</div>
+</div>
+</td>
+<td class="py-3 px-3 text-slate-400 font-mono text-[11px]">TELEMETRY</td>
+<td class="py-3 px-3">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Passed
+                      </span>
+</td>
+<td class="py-3 px-3 text-slate-300 font-mono">localhost</td>
+<td class="py-3 px-3 font-mono">
+<span class="bg-slate-900 border border-white/10 px-2 py-0.5 rounded text-[11px] text-slate-300">TCP :50955</span>
+</td>
+<td class="py-3 px-4 sm:px-6 text-right text-slate-400 font-mono text-[11px]">Just now</td>
+</tr>
+<!-- Row 5: M365Copilot.exe -->
+<tr class="hover:bg-slate-800/30 transition-colors group">
+<td class="py-3 px-4 sm:px-6">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<div>
+<div class="font-medium text-slate-200 group-hover:text-emerald-300 font-mono transition-colors">M365Copilot.exe</div>
+<div class="text-[11px] text-slate-500 font-mono">PID-16972</div>
+</div>
+</div>
+</td>
+<td class="py-3 px-3 text-slate-400 font-mono text-[11px]">TELEMETRY</td>
+<td class="py-3 px-3">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Passed
+                      </span>
+</td>
+<td class="py-3 px-3 text-slate-300 font-mono">Microsoft Corporation</td>
+<td class="py-3 px-3 font-mono">
+<span class="bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded text-[11px] text-cyan-300">TCP :443</span>
+</td>
+<td class="py-3 px-4 sm:px-6 text-right text-slate-400 font-mono text-[11px]">Just now</td>
+</tr>
+<!-- Row 6: language_server_windows_x64.exe (Secondary PID) -->
+<tr class="hover:bg-slate-800/30 transition-colors group">
+<td class="py-3 px-4 sm:px-6">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<div>
+<div class="font-medium text-slate-200 group-hover:text-emerald-300 font-mono transition-colors">language_server_windows_x64.exe</div>
+<div class="text-[11px] text-slate-500 font-mono">PID-3952</div>
+</div>
+</div>
+</td>
+<td class="py-3 px-3 text-slate-400 font-mono text-[11px]">TELEMETRY</td>
+<td class="py-3 px-3">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Passed
+                      </span>
+</td>
+<td class="py-3 px-3 text-slate-300 font-mono">localhost</td>
+<td class="py-3 px-3 font-mono">
+<span class="bg-slate-900 border border-white/10 px-2 py-0.5 rounded text-[11px] text-slate-300">TCP :54153</span>
+</td>
+<td class="py-3 px-4 sm:px-6 text-right text-slate-400 font-mono text-[11px]">Just now</td>
+</tr>
+<!-- Row 7: Antigravity IDE.exe -->
+<tr class="hover:bg-slate-800/30 transition-colors group">
+<td class="py-3 px-4 sm:px-6">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<div>
+<div class="font-medium text-slate-200 group-hover:text-emerald-300 font-mono transition-colors">Antigravity IDE.exe</div>
+<div class="text-[11px] text-slate-500 font-mono">PID-7184</div>
+</div>
+</div>
+</td>
+<td class="py-3 px-3 text-slate-400 font-mono text-[11px]">TELEMETRY</td>
+<td class="py-3 px-3">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Passed
+                      </span>
+</td>
+<td class="py-3 px-3 text-slate-300 font-mono">localhost</td>
+<td class="py-3 px-3 font-mono">
+<span class="bg-slate-900 border border-white/10 px-2 py-0.5 rounded text-[11px] text-slate-300">TCP :63645</span>
+</td>
+<td class="py-3 px-4 sm:px-6 text-right text-slate-400 font-mono text-[11px]">Just now</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Footer Pagination/Status -->
+<div class="p-3 px-6 border-t border-white/5 bg-[#090f1a]/80 flex items-center justify-between text-xs text-slate-400">
+<span class="font-mono text-[11px]">Showing 7 of 12 components</span>
+<div class="flex items-center gap-1">
+<button class="px-2.5 py-1 rounded bg-slate-800 text-slate-300 hover:text-white border border-white/5 disabled:opacity-40" disabled="">Previous</button>
+<button class="px-2.5 py-1 rounded bg-slate-800 text-slate-300 hover:text-white border border-white/5">Next</button>
+</div>
+</div>
+</div>
+<!-- Live Telemetry Stream / Activity Feed (4 Cols on LG) -->
+<div class="lg:col-span-4 rounded-2xl border border-white/10 bg-[#0c1322] shadow-xl p-5 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-4 pb-2 border-b border-white/5">
+<div class="flex items-center gap-2">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+</span>
+<h3 class="text-sm font-semibold text-white tracking-wide">Live Telemetry Activity</h3>
+</div>
+<a class="text-xs font-mono text-emerald-400 hover:underline hover:text-emerald-300" href="file:///C:/Users/User/Documents/MyProject/My%20Idea/Antigravity%20project/signalmap/designs/stitch-15327396699438504010/dashboard_dark.html#">View All</a>
+</div>
+<!-- Stream Timeline Items -->
+<div class="space-y-3 font-mono">
+<!-- Event Item 1 -->
+<div class="flex items-start gap-3 p-2.5 rounded-xl bg-[#090f1a] border border-white/5 hover:border-emerald-500/30 transition-all">
+<div class="w-6 h-6 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></svg>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between text-xs">
+<span class="font-medium text-slate-200 truncate">Connected — localhost</span>
+<span class="text-[10px] text-slate-400 shrink-0">TCP</span>
+</div>
+<div class="text-[11px] text-slate-400 mt-0.5">
+                      1m ago • <span class="text-slate-300">Antigravity.exe</span>
+</div>
+</div>
+</div>
+<!-- Event Item 2 -->
+<div class="flex items-start gap-3 p-2.5 rounded-xl bg-[#090f1a] border border-white/5 hover:border-emerald-500/30 transition-all">
+<div class="w-6 h-6 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></svg>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between text-xs">
+<span class="font-medium text-slate-200 truncate">Connected — local_network</span>
+<span class="text-[10px] text-slate-400 shrink-0">TCP</span>
+</div>
+<div class="text-[11px] text-slate-400 mt-0.5">
+                      2m ago • <span class="text-slate-300">opera.exe</span>
+</div>
+</div>
+</div>
+<!-- Event Item 3 -->
+<div class="flex items-start gap-3 p-2.5 rounded-xl bg-[#090f1a] border border-white/5 hover:border-emerald-500/30 transition-all">
+<div class="w-6 h-6 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></svg>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between text-xs">
+<span class="font-medium text-slate-200 truncate">Connected — 172.217.117.4</span>
+<span class="text-[10px] text-slate-400 shrink-0">TCP</span>
+</div>
+<div class="text-[11px] text-slate-400 mt-0.5">
+                      3m ago • <span class="text-slate-300">language_server_win...</span>
+</div>
+</div>
+</div>
+<!-- Event Item 4 -->
+<div class="flex items-start gap-3 p-2.5 rounded-xl bg-[#090f1a] border border-white/5 hover:border-emerald-500/30 transition-all">
+<div class="w-6 h-6 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></svg>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between text-xs">
+<span class="font-medium text-slate-200 truncate">Connected — localhost</span>
+<span class="text-[10px] text-slate-400 shrink-0">TCP</span>
+</div>
+<div class="text-[11px] text-slate-400 mt-0.5">
+                      4m ago • <span class="text-slate-300">language_server_win...</span>
+</div>
+</div>
+</div>
+<!-- Event Item 5 -->
+<div class="flex items-start gap-3 p-2.5 rounded-xl bg-[#090f1a] border border-white/5 hover:border-emerald-500/30 transition-all">
+<div class="w-6 h-6 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></svg>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between text-xs">
+<span class="font-medium text-slate-200 truncate">Connected — 20.184.175.12</span>
+<span class="text-[10px] text-slate-400 shrink-0">TCP</span>
+</div>
+<div class="text-[11px] text-slate-400 mt-0.5">
+                      5m ago • <span class="text-slate-300">M365Copilot.exe</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Terminal Status Notice -->
+<div class="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] font-mono text-slate-400">
+<span class="flex items-center gap-1.5 text-emerald-400">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Stream sync: 24ms
+              </span>
+<button class="hover:text-white transition-colors">Clear feed</button>
+</div>
+</div>
+</section>
+<!-- END: DataGridAndStreamSection -->
+</main>
+</div>
+</div>
+<!-- END: ApplicationLayout -->
+<!-- Interactivity Script for keyboard omnibar & visual micro-states -->
+<script data-purpose="dashboard-interactivity">
+    document.addEventListener('keydown', (e) => {
+      // ⌘K or Ctrl+K omnibar focus handler
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        const searchInput = document.querySelector('input[placeholder*="Search telemetry"]');
+        if (searchInput) searchInput.focus();
+      }
+    });
+  </script>
+</body></html>

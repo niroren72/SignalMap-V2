@@ -1,0 +1,586 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #ecfdf5;
+  --color-brand-400: #34d399;
+  --color-brand-500: #10b981;
+  --color-brand-600: #059669;
+
+  --color-surface-base: #070b12;
+  --color-surface-card: #0c1322;
+  --color-surface-card-hover: #111a2e;
+  --color-surface-border: rgba(255, 255, 255, 0.07);
+  --color-surface-border-focus: rgba(16, 185, 129, 0.4);
+
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  --shadow-glow-emerald: 0 0 25px -5px rgba(16, 185, 129, 0.25);
+  --shadow-glow-cyan: 0 0 25px -5px rgba(6, 182, 212, 0.25);
+}
+
+/* ── UI-UX Pro Max Design Tokens (Aerospace Linear Matte Dark Console) ── */
+:root,
+[data-theme="c"],
+[data-theme="dark"] {
+  /* Stitch Aerospace Telemetry & Threat Observability Platform Dark Palette */
+  --color-bg-primary: #070b12;
+  --color-bg-secondary: #080d16;
+  --color-bg-tertiary: #0a101b;
+  --color-bg-card: #0c1322;
+  --color-bg-hover: #111a2e;
+  --color-border: rgba(255, 255, 255, 0.07);
+  --color-border-bright: rgba(255, 255, 255, 0.14);
+  --color-border-hairline: rgba(255, 255, 255, 0.04);
+
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+
+  --color-accent: #10b981;
+  --color-accent-subtle: rgba(16, 185, 129, 0.12);
+  --color-accent-border: rgba(16, 185, 129, 0.35);
+  --color-accent-hover: #059669;
+  --color-accent-text: #34d399;
+
+  --color-status-ok: #10b981;
+  --color-status-warn: #f59e0b;
+  --color-status-danger: #f43f5e;
+
+  --color-accent-blue: #38bdf8;
+  --color-accent-cyan: #06b6d4;
+  --color-accent-purple: #a855f7;
+  --color-accent-green: #10b981;
+  --color-accent-orange: #f59e0b;
+  --color-accent-pink: #ec4899;
+  --color-accent-red: #f43f5e;
+
+  --color-glow-blue: rgba(56, 189, 248, 0.25);
+  --color-glow-cyan: rgba(6, 182, 212, 0.25);
+  --color-glow-green: rgba(16, 185, 129, 0.25);
+  --color-glow-red: rgba(244, 63, 94, 0.25);
+
+  --radius-card: 14px;
+  --radius-control: 8px;
+  --radius-sm: 6px;
+  --shadow-card: 0 4px 25px -3px rgba(0, 0, 0, 0.7), inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+[data-theme="a"] {
+  /* Option A: Plasma Void (Pure OLED Onyx / Electric Violet / Razor Hairline) */
+  --color-bg-primary: #000000;
+  --color-bg-secondary: #0a0a0d;
+  --color-bg-tertiary: #121217;
+  --color-bg-card: rgba(14, 14, 18, 0.94);
+  --color-bg-hover: #1c1c24;
+  --color-border: #23232a;
+  --color-border-bright: #3f3f4c;
+  --color-border-hairline: #18181f;
+
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #71717a;
+
+  --color-accent: #a855f7;
+  --color-accent-subtle: rgba(168, 85, 247, 0.14);
+  --color-accent-border: rgba(168, 85, 247, 0.4);
+  --color-accent-hover: #9333ea;
+  --color-accent-text: #c084fc;
+
+  --color-status-ok: #22c55e;
+  --color-status-warn: #eab308;
+  --color-status-danger: #ef4444;
+
+  --color-accent-blue: #60a5fa;
+  --color-accent-cyan: #38bdf8;
+  --color-accent-purple: #c084fc;
+  --color-accent-green: #22c55e;
+  --color-accent-orange: #fb923c;
+  --color-accent-pink: #f472b6;
+  --color-accent-red: #ef4444;
+
+  --color-glow-blue: rgba(96, 165, 250, 0.35);
+  --color-glow-cyan: rgba(56, 189, 248, 0.35);
+  --color-glow-green: rgba(34, 197, 94, 0.35);
+  --color-glow-red: rgba(239, 68, 68, 0.35);
+
+  --radius-card: 8px;
+  --radius-control: 6px;
+  --radius-sm: 4px;
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+[data-theme="b"],
+[data-theme="light"] {
+  /* Daylight Bento (Clean Minimal Light Mode / High-Contrast Pro) */
+  --color-bg-primary: #f8fafc;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #f1f5f9;
+  --color-bg-card: #ffffff;
+  --color-bg-hover: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-border-bright: #cbd5e1;
+  --color-border-hairline: #f1f5f9;
+
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+
+  --color-accent: #0284c7;
+  --color-accent-subtle: rgba(2, 132, 199, 0.08);
+  --color-accent-border: rgba(2, 132, 199, 0.3);
+  --color-accent-hover: #0369a1;
+  --color-accent-text: #0284c7;
+
+  --color-status-ok: #10b981;
+  --color-status-warn: #f59e0b;
+  --color-status-danger: #ef4444;
+
+  --color-accent-blue: #0284c7;
+  --color-accent-cyan: #06b6d4;
+  --color-accent-purple: #7c3aed;
+  --color-accent-green: #10b981;
+  --color-accent-orange: #ea580c;
+  --color-accent-pink: #db2777;
+  --color-accent-red: #ef4444;
+
+  --color-glow-blue: rgba(2, 132, 199, 0.15);
+  --color-glow-cyan: rgba(6, 182, 212, 0.15);
+  --color-glow-green: rgba(16, 185, 129, 0.15);
+  --color-glow-red: rgba(239, 68, 68, 0.15);
+
+  --radius-card: 12px;
+  --radius-control: 8px;
+  --radius-sm: 6px;
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+
+  --font-sans: 'Outfit', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+/* ── Apple Design Engineering Motion & Typography Tokens ── */
+:root {
+  --ease-out-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.tabular-nums,
+[data-tabular="true"],
+.font-mono {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "cv05" 1;
+}
+
+/* Tactile fluid button & micro-interaction active states */
+.btn-tactile,
+button:not(:disabled):active {
+  transform: scale(0.975);
+  transition: transform 0.12s var(--ease-out-spring);
+}
+
+/* Smooth interruptible drawer slide */
+.panel-spring-drawer {
+  transition: transform 0.38s var(--ease-drawer), opacity 0.25s ease-out;
+}
+
+@keyframes slide-in-spring {
+  from {
+    transform: translateX(100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes modal-scale-in {
+  from {
+    transform: scale(0.96) translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in-spring 0.36s var(--ease-drawer) forwards;
+}
+
+.animate-modal-in {
+  animation: modal-scale-in 0.22s var(--ease-out-spring) forwards;
+}
+
+/* ── Reset & Base ─────────────────────────────────────────────────── */
+html {
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+body {
+  background-color: #070b12;
+  color: #e2e8f0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+  font-size: 13.5px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Accessible Focus Indicators */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #10b981 !important;
+  outline-offset: 2px !important;
+}
+
+/* ── Ultra-Sleek Scrollbars ───────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090e18;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* ── Frosted Glass & Surface Classes ──────────────────────────────── */
+.glass-card {
+  background: var(--color-bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  color: var(--color-text-primary);
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card:hover {
+  border-color: var(--color-border-bright);
+}
+
+.card-hairline {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  color: var(--color-text-primary);
+}
+
+.glow-text {
+  color: var(--color-accent-text);
+  text-shadow: 0 0 12px var(--color-accent-border);
+}
+
+.glow-border {
+  border-color: var(--color-accent-border);
+  box-shadow: 0 0 14px var(--color-accent-subtle);
+}
+
+/* ── Stitch Donut Gauge & Chart Glow Utilities ────────────────────── */
+.donut-gauge {
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+.donut-glow {
+  filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.65));
+}
+
+.grid-pattern {
+  background-size: 24px 24px;
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+}
+
+[data-theme="b"] .grid-pattern,
+[data-theme="light"] .grid-pattern {
+  background-image: linear-gradient(to right, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+}
+
+/* ── Protocol Color Badges ────────────────────────────────────────── */
+.protocol-tcp {
+  color: var(--color-accent-blue);
+}
+
+.protocol-udp {
+  color: var(--color-accent-purple);
+}
+
+.protocol-http {
+  color: var(--color-accent-green);
+}
+
+.protocol-https {
+  color: var(--color-accent-cyan);
+}
+
+.protocol-ws {
+  color: var(--color-accent-orange);
+}
+
+.protocol-wss {
+  color: var(--color-accent-pink);
+}
+
+/* ── Interactive Buttons & Chips ──────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid transparent;
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  user-select: none;
+}
+
+.btn:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border-bright);
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn-active {
+  background: var(--color-accent);
+  color: #ffffff;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 12px var(--color-glow-cyan);
+}
+
+.btn-white {
+  background: #ffffff !important;
+  color: #0b0d10 !important;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-white:hover {
+  background: #f1f3f6 !important;
+  transform: translateY(-1px);
+}
+
+.btn-white:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.badge-mint {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-rose {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-amber {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-danger {
+  background: rgba(239, 68, 68, 0.14);
+  color: var(--color-status-danger);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: var(--color-status-danger);
+}
+
+/* ── Status Dots ──────────────────────────────────────────────────── */
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  position: relative;
+}
+
+.status-dot-live {
+  background: var(--color-status-ok);
+  box-shadow: 0 0 8px var(--color-status-ok);
+}
+
+.status-dot-paused {
+  background: var(--color-status-warn);
+  box-shadow: 0 0 8px var(--color-status-warn);
+}
+
+.status-dot-alert {
+  background: var(--color-status-danger);
+  box-shadow: 0 0 10px var(--color-status-danger);
+  animation: pulse-danger 1.5s infinite;
+}
+
+/* ── Animations ───────────────────────────────────────────────────── */
+@keyframes pulse-danger {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-slide-in {
+  animation: slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Utility overrides ────────────────────────────────────────────── */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ── Light Mode UI Overrides ──────────────────────────────────────── */
+[data-theme="b"] .glass-card,
+[data-theme="light"] .glass-card {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.03) !important;
+  color: #0f172a !important;
+}
+
+[data-theme="b"] .glass-card:hover,
+[data-theme="light"] .glass-card:hover {
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme="b"] .btn-white,
+[data-theme="light"] .btn-white {
+  background: #0f172a !important;
+  color: #ffffff !important;
+  border-color: #0f172a !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
+}
+
+[data-theme="b"] .btn-white:hover,
+[data-theme="light"] .btn-white:hover {
+  background: #1e293b !important;
+}
+
+[data-theme="b"] input,
+[data-theme="light"] input,
+[data-theme="b"] select,
+[data-theme="light"] select {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="b"] input::placeholder,
+[data-theme="light"] input::placeholder {
+  color: #94a3b8 !important;
+}
+
+[data-theme="b"] tr:hover,
+[data-theme="light"] tr:hover {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
