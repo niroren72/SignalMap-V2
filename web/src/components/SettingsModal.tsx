@@ -6,7 +6,10 @@ import {
     ShieldAlert,
     Sparkles,
     Activity,
+    Palette,
+    Check,
 } from 'lucide-react';
+import { GLOBE_THEMES } from '../types/globeTheme';
 
 export function SettingsModal() {
     const {
@@ -18,6 +21,8 @@ export function SettingsModal() {
         setEvents,
         isLive,
         setIsLive,
+        globeTheme,
+        setGlobeTheme,
     } = useConnectionStore();
 
     if (!showSettingsModal) return null;
@@ -194,9 +199,82 @@ export function SettingsModal() {
                 <div className="flex flex-col gap-3">
                     <h3 className="text-xs font-mono font-bold uppercase text-teal-400 tracking-wider flex items-center gap-2">
                         <Sparkles className="w-3.5 h-3.5" />
-                        <span>Visualizer & 3D Rendering</span>
+                        <span>Visualizer & 3D Globe Theme</span>
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+                    {/* Globe Themes Gallery */}
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+                            <span className="flex items-center gap-1.5">
+                                <Palette className="w-3.5 h-3.5 text-cyan-400" />
+                                <span>3D Globe Visual Style</span>
+                            </span>
+                            <span className="text-[10px] font-mono text-cyan-400">
+                                {GLOBE_THEMES[globeTheme]?.name || 'Wonderful AI'} Active
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                            {Object.values(GLOBE_THEMES).map((theme) => {
+                                const isSelected = theme.id === globeTheme;
+                                return (
+                                    <button
+                                        key={theme.id}
+                                        type="button"
+                                        onClick={() => setGlobeTheme(theme.id)}
+                                        className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${
+                                            isSelected
+                                                ? 'bg-cyan-950/60 border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.25)] ring-1 ring-cyan-500'
+                                                : 'hover:border-slate-600 border-transparent hover:opacity-95'
+                                        }`}
+                                        style={{
+                                            backgroundColor: isSelected ? undefined : 'var(--color-bg-secondary)',
+                                            borderColor: isSelected ? undefined : 'var(--color-border)',
+                                        }}
+                                    >
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <div className="flex -space-x-1">
+                                                <span
+                                                    className="w-3.5 h-3.5 rounded-full ring-1 ring-black/40"
+                                                    style={{ backgroundColor: theme.previewSwatches.dots }}
+                                                    title="Land dots"
+                                                />
+                                                <span
+                                                    className="w-3.5 h-3.5 rounded-full ring-1 ring-black/40"
+                                                    style={{ backgroundColor: theme.previewSwatches.atmosphere }}
+                                                    title="Atmosphere"
+                                                />
+                                                <span
+                                                    className="w-3.5 h-3.5 rounded-full ring-1 ring-black/40"
+                                                    style={{ backgroundColor: theme.previewSwatches.arc }}
+                                                    title="Arc"
+                                                />
+                                            </div>
+                                            {theme.badge && (
+                                                <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                                                    {theme.badge}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col gap-0.5">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-bold text-slate-100">
+                                                    {theme.name}
+                                                </span>
+                                                {isSelected && (
+                                                    <Check className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                                                )}
+                                            </div>
+                                            <span className="text-[10px] leading-tight text-slate-400">
+                                                {theme.description}
+                                            </span>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
                         {/* Atmospheric Glow Toggle */}
                         <label className="p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition hover:opacity-95" style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }}>
                             <div className="flex flex-col">

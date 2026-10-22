@@ -2,7 +2,21 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import Globe from 'globe.gl';
 import { useFilteredEvents } from '../hooks/useConnections';
 import { useConnectionStore } from '../stores/connectionStore';
-import { Radio, X, Laptop, Link2, MapPin, Terminal, Plus, Minus, Compass } from 'lucide-react';
+import {
+    Radio,
+    X,
+    Laptop,
+    Link2,
+    MapPin,
+    Terminal,
+    Plus,
+    Minus,
+    Compass,
+    Palette,
+    Check,
+    ChevronDown,
+} from 'lucide-react';
+import { GLOBE_THEMES } from '../types/globeTheme';
 
 export function GlobeView() {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -12,8 +26,18 @@ export function GlobeView() {
     const diagnosticOverlay = useConnectionStore((s) => s.diagnosticOverlay);
     const clearDiagnosticOverlay = useConnectionStore((s) => s.clearDiagnosticOverlay);
     const setActiveView = useConnectionStore((s) => s.setActiveView);
+    const globeTheme = useConnectionStore((s) => s.globeTheme);
+    const setGlobeTheme = useConnectionStore((s) => s.setGlobeTheme);
+    const autoRotate = useConnectionStore((s) => s.settings.autoRotateGlobe);
+    const enableAtmosphere = useConnectionStore((s) => s.settings.enableAtmosphereGlow);
     const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
     const [zoom, setZoom] = useState(2.5);
+    const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+
+    const currentTheme = useMemo(
+        () => GLOBE_THEMES[globeTheme] || GLOBE_THEMES['wonderful-ai'],
+        [globeTheme]
+    );
 
     // Fetch origin coordinates from local backend (airgap-safe, zero external privacy leaks)
     const [origin, setOrigin] = useState({ lat: 39.8283, lng: -98.5795 });
@@ -70,45 +94,9 @@ export function GlobeView() {
         return Object.values(grouped).map((p: any) => ({
             ...p,
             radius: Math.min(Math.max(p.size * 0.15, 0.3), 2.5),
-            color: p.hasAnomaly
-                ? p.maxSeverity === 'critical'
-                    ? '#ef4444'
-                    : '#f43f5e'
-                : '#06b6d4',
+            color: currentTheme.pointColor(p),
         }));
-    }, [geoEvents]);
-
-    function getEventColor(event: any) {
-        if (event.anomaly?.is_anomaly) {
-            switch (event.anomaly.severity) {
-                case 'critical':
-                    return '#ef4444';
-                case 'high':
-                    return '#f43f5e';
-                case 'medium':
-                    return '#f59e0b';
-                case 'low':
-                    return '#eab308';
-                default:
-                    return '#ef4444';
-            }
-        }
-        switch (event.protocol) {
-            case 'tcp':
-                return '#3b82f6';
-            case 'udp':
-                return '#8b5cf6';
-            case 'http':
-                return '#10b981';
-            case 'https':
-                return '#06b6d4';
-            case 'ws':
-            case 'wss':
-                return '#ec4899';
-            default:
-                return '#94a3b8';
-        }
-    }
+    }, [geoEvents, currentTheme]);
 
     const arcs = useMemo(() => {
         return geoEvents.map((e) => ({
@@ -116,12 +104,12 @@ export function GlobeView() {
             startLng: origin.lng,
             endLat: e.geo!.lat,
             endLng: e.geo!.lon,
-            color: getEventColor(e),
-            stroke: e.anomaly?.is_anomaly ? 1.0 : 0.5,
+            color: currentTheme.arcColors(e),
+            stroke: e.anomaly?.is_anomaly ? 1.2 : 0.6,
             altitude: e.anomaly?.is_anomaly ? 0.3 : 0.2,
             event: e,
         }));
-    }, [geoEvents, origin]);
+    }, [geoEvents, origin, currentTheme]);
 
     // ── Diagnostic Overlay Route Arcs & Hop Points ──
     function getHopArcColor(latencyMs: number | null | undefined): string {
@@ -251,16 +239,50 @@ export function GlobeView() {
     const allArcs = useMemo(() => [...arcs, ...diagArcs], [arcs, diagArcs]);
     const allPoints = useMemo(() => [...points, ...diagPoints], [points, diagPoints]);
 
+    // Concentric pulsating beacon radar rings (Wonderful AI starlight radar effect)
+    const rings = useMemo(() => {
+        const list: any[] = [
+            {
+                lat: origin.lat,
+                lng: origin.lng,
+                maxRadius: 5.5,
+                propagationSpeed: 1.8,
+                repeatPeriod: 2200,
+                color: currentTheme.ringColor,
+            },
+        ];
+
+        // Active traffic and security anomaly nodes get pulsating beacon rings
+        const activeNodes = points
+            .filter((p: any) => p.hasAnomaly || p.size > 2)
+            .slice(0, 5);
+
+        activeNodes.forEach((p: any) => {
+            list.push({
+                lat: p.lat,
+                lng: p.lng,
+                maxRadius: p.hasAnomaly ? 6.5 : 4.0,
+                propagationSpeed: p.hasAnomaly ? 2.8 : 1.4,
+                repeatPeriod: p.hasAnomaly ? 1400 : 2600,
+                color: p.hasAnomaly
+                    ? (t: number) => `rgba(244, 63, 94, ${Math.max(0, 1 - t) * 0.85})`
+                    : currentTheme.ringColor,
+            });
+        });
+
+        return list;
+    }, [origin, points, currentTheme]);
+
     // Init globe
     useEffect(() => {
         if (!containerRef.current) return;
 
         const globe = (Globe as any)()(containerRef.current)
-            .globeImageUrl('/assets/earth/earth-blue-marble.jpg')
-            .bumpImageUrl('/assets/earth/earth-topology.png')
-            .atmosphereColor('#4fc3f7')
-            .atmosphereAltitude(0.18)
-            .backgroundColor('rgba(0,0,0,0)')
+            .globeImageUrl(currentTheme.textureUrl)
+            .bumpImageUrl(currentTheme.bumpUrl || '')
+            .atmosphereColor(enableAtmosphere ? currentTheme.atmosphereColor : 'rgba(0,0,0,0)')
+            .atmosphereAltitude(enableAtmosphere ? currentTheme.atmosphereAltitude : 0)
+            .backgroundColor(currentTheme.backgroundColor)
             .width(dimensions.width)
             .height(dimensions.height)
             .pointLat('lat')
@@ -280,6 +302,13 @@ export function GlobeView() {
             .arcDashAnimateTime(1500)
             .arcAltitude('altitude')
             .arcStroke('stroke')
+            .ringsData(rings)
+            .ringLat('lat')
+            .ringLng('lng')
+            .ringColor('color')
+            .ringMaxRadius('maxRadius')
+            .ringPropagationSpeed('propagationSpeed')
+            .ringRepeatPeriod('repeatPeriod')
             .onArcClick((arc: any) => {
                 if (!arc.isDiagnostic && arc.event) {
                     setSelectedId(arc.event.id);
@@ -332,7 +361,7 @@ export function GlobeView() {
         `;
             });
 
-        globe.controls().autoRotate = false;
+        globe.controls().autoRotate = autoRotate;
         globe.controls().autoRotateSpeed = 0.5;
         globe.controls().enableZoom = true;
         globe.controls().zoomSpeed = 1.2;
@@ -347,13 +376,34 @@ export function GlobeView() {
         };
     }, []);
 
+    // Reactive theme & atmosphere updates
+    useEffect(() => {
+        if (!globeRef.current) return;
+        globeRef.current
+            .globeImageUrl(currentTheme.textureUrl)
+            .bumpImageUrl(currentTheme.bumpUrl || '')
+            .atmosphereColor(enableAtmosphere ? currentTheme.atmosphereColor : 'rgba(0,0,0,0)')
+            .atmosphereAltitude(enableAtmosphere ? currentTheme.atmosphereAltitude : 0)
+            .backgroundColor(currentTheme.backgroundColor);
+    }, [currentTheme, enableAtmosphere]);
+
+    // Reactive autoRotate update
+    useEffect(() => {
+        if (!globeRef.current) return;
+        const controls = globeRef.current.controls();
+        if (controls) {
+            controls.autoRotate = autoRotate;
+        }
+    }, [autoRotate]);
+
     // Update data reactively
     useEffect(() => {
         if (globeRef.current) {
             globeRef.current.pointsData(allPoints);
             globeRef.current.arcsData(allArcs);
+            globeRef.current.ringsData(rings);
         }
-    }, [allPoints, allArcs]);
+    }, [allPoints, allArcs, rings]);
 
     // Auto-focus camera when a new diagnostic route is projected
     useEffect(() => {
@@ -528,6 +578,99 @@ export function GlobeView() {
                     </button>
                 </div>
             )}
+
+            {/* Floating Theme Selector HUD */}
+            <div className="absolute top-4 right-4 z-20">
+                <div className="relative">
+                    <button
+                        id="globe-theme-menu-btn"
+                        onClick={() => setThemeMenuOpen(!themeMenuOpen)}
+                        className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl glass-card border border-slate-700/80 hover:border-cyan-500/60 text-slate-200 hover:text-white text-xs font-mono font-medium shadow-xl backdrop-blur-xl transition-all group"
+                        title="Switch 3D Globe Visual Theme"
+                    >
+                        <div className="flex items-center gap-1.5">
+                            <span
+                                className="w-2.5 h-2.5 rounded-full ring-1 ring-white/30"
+                                style={{ backgroundColor: currentTheme.previewSwatches.atmosphere }}
+                            />
+                            <Palette className="w-3.5 h-3.5 text-cyan-400 group-hover:rotate-12 transition-transform" />
+                        </div>
+                        <span className="font-semibold">{currentTheme.name}</span>
+                        <ChevronDown
+                            className={`w-3.5 h-3.5 text-slate-400 transition-transform ${
+                                themeMenuOpen ? 'rotate-180' : ''
+                            }`}
+                        />
+                    </button>
+
+                    {themeMenuOpen && (
+                        <div
+                            className="absolute right-0 top-full mt-2 w-72 rounded-2xl glass-card border border-slate-700/80 shadow-2xl p-2 z-30 backdrop-blur-2xl animate-fade-in flex flex-col gap-1"
+                            style={{ backgroundColor: 'rgba(15, 23, 42, 0.95)' }}
+                        >
+                            <div className="px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 flex items-center justify-between">
+                                <span>3D Globe Themes</span>
+                                <span className="text-cyan-400 font-mono text-[9px]">{Object.keys(GLOBE_THEMES).length} Available</span>
+                            </div>
+                            <div className="flex flex-col gap-1 max-h-80 overflow-y-auto pt-1">
+                                {Object.values(GLOBE_THEMES).map((theme) => {
+                                    const isSelected = theme.id === globeTheme;
+                                    return (
+                                        <button
+                                            key={theme.id}
+                                            onClick={() => {
+                                                setGlobeTheme(theme.id);
+                                                setThemeMenuOpen(false);
+                                            }}
+                                            className={`flex items-center justify-between p-2 rounded-xl text-left transition-all ${
+                                                isSelected
+                                                    ? 'bg-cyan-950/70 border border-cyan-500/50 text-white shadow-sm'
+                                                    : 'hover:bg-slate-800/60 text-slate-300 hover:text-white border border-transparent'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                <div className="flex -space-x-1 shrink-0">
+                                                    <span
+                                                        className="w-3.5 h-3.5 rounded-full ring-1 ring-black/40"
+                                                        style={{ backgroundColor: theme.previewSwatches.dots }}
+                                                        title="Land dots"
+                                                    />
+                                                    <span
+                                                        className="w-3.5 h-3.5 rounded-full ring-1 ring-black/40"
+                                                        style={{ backgroundColor: theme.previewSwatches.atmosphere }}
+                                                        title="Atmosphere"
+                                                    />
+                                                    <span
+                                                        className="w-3.5 h-3.5 rounded-full ring-1 ring-black/40"
+                                                        style={{ backgroundColor: theme.previewSwatches.arc }}
+                                                        title="Arc"
+                                                    />
+                                                </div>
+                                                <div className="flex flex-col min-w-0">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-xs font-semibold truncate">{theme.name}</span>
+                                                        {theme.badge && (
+                                                            <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-mono">
+                                                                {theme.badge}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-[10px] text-slate-400 truncate max-w-[170px]">
+                                                        {theme.description}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            {isSelected && (
+                                                <Check className="w-4 h-4 text-cyan-400 shrink-0 ml-1.5" />
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
 
             {/* Zoom controls */}
             <div className="absolute bottom-32 right-6 z-10 flex flex-col gap-1.5">

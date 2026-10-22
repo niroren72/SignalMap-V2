@@ -1,5 +1,6 @@
 import type { ConnectionEvent } from '@shared/types';
 import { create } from 'zustand';
+import type { GlobeThemeId } from '../types/globeTheme';
 
 export interface FiltersState {
     protocol: string | null;
@@ -81,6 +82,8 @@ interface ConnectionStore {
     tableHeightMode: TableHeightMode;
     layoutTheme: LayoutTheme;
     setLayoutTheme: (theme: LayoutTheme) => void;
+    globeTheme: GlobeThemeId;
+    setGlobeTheme: (theme: GlobeThemeId) => void;
 
     // Table Sorting
     tableSortField: 'timestamp' | 'process' | 'protocol' | 'remote_ip' | 'country' | 'category' | 'bytes' | 'severity';
@@ -159,6 +162,15 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
             if (saved === 'a' || saved === 'b' || saved === 'c' || saved === 'light' || saved === 'dark') return saved as LayoutTheme;
         }
         return 'c';
+    })(),
+    globeTheme: (() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('signalmap-globe-theme');
+            if (saved === 'wonderful-ai' || saved === 'cyberpunk' || saved === 'aurora' || saved === 'solar' || saved === 'matrix' || saved === 'classic') {
+                return saved as GlobeThemeId;
+            }
+        }
+        return 'wonderful-ai';
     })(),
 
     // Table sorting default
@@ -258,6 +270,12 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
             localStorage.setItem('signalmap-layout-theme', layoutTheme);
         }
         set({ layoutTheme });
+    },
+    setGlobeTheme: (globeTheme) => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('signalmap-globe-theme', globeTheme);
+        }
+        set({ globeTheme });
     },
 
     setTableSort: (field) =>
