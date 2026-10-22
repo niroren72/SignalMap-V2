@@ -51,6 +51,12 @@ pnpm-debug.log*
 *.swp
 *.swo
 
+# Agent & IDE workspace configurations
+.agents/
+.codex/
+.impeccable/
+.gemini/
+
 # OS files
 .DS_Store
 Thumbs.db
