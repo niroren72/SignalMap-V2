@@ -35,7 +35,7 @@ export function GlobeView() {
     const [themeMenuOpen, setThemeMenuOpen] = useState(false);
 
     const currentTheme = useMemo(
-        () => GLOBE_THEMES[globeTheme] || GLOBE_THEMES['wonderful-ai'],
+        () => GLOBE_THEMES[globeTheme] || GLOBE_THEMES['black-dots'],
         [globeTheme]
     );
 

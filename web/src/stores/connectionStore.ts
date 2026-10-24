@@ -78,6 +78,7 @@ interface ConnectionStore {
     // Modals and UI Toggles
     showSettingsModal: boolean;
     showUploadModal: boolean;
+    showLoadingScreen: boolean;
     isSidebarCollapsed: boolean;
     tableHeightMode: TableHeightMode;
     layoutTheme: LayoutTheme;
@@ -115,6 +116,7 @@ interface ConnectionStore {
     // UI Toggle Actions
     setShowSettingsModal: (show: boolean) => void;
     setShowUploadModal: (show: boolean) => void;
+    setShowLoadingScreen: (show: boolean) => void;
     setIsSidebarCollapsed: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
     setTableHeightMode: (mode: TableHeightMode) => void;
     setTableSort: (field: ConnectionStore['tableSortField']) => void;
@@ -154,6 +156,7 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
     // UI state
     showSettingsModal: false,
     showUploadModal: false,
+    showLoadingScreen: true,
     isSidebarCollapsed: true,
     tableHeightMode: 'compact',
     layoutTheme: (() => {
@@ -166,11 +169,10 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
     globeTheme: (() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('signalmap-globe-theme');
-            if (saved === 'wonderful-ai' || saved === 'cyberpunk' || saved === 'aurora' || saved === 'solar' || saved === 'matrix' || saved === 'classic') {
-                return saved as GlobeThemeId;
-            }
+            if (saved === 'classic') return 'classic';
+            if (saved === 'black-dots') return 'black-dots';
         }
-        return 'wonderful-ai';
+        return 'black-dots';
     })(),
 
     // Table sorting default
@@ -256,6 +258,7 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
     // UI Actions
     setShowSettingsModal: (showSettingsModal) => set({ showSettingsModal }),
     setShowUploadModal: (showUploadModal) => set({ showUploadModal }),
+    setShowLoadingScreen: (showLoadingScreen) => set({ showLoadingScreen }),
     setIsSidebarCollapsed: (collapsedOrUpdater) =>
         set((state) => ({
             isSidebarCollapsed:

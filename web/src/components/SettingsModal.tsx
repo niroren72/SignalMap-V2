@@ -8,6 +8,7 @@ import {
     Activity,
     Palette,
     Check,
+    Rocket,
 } from 'lucide-react';
 import { GLOBE_THEMES } from '../types/globeTheme';
 
@@ -23,6 +24,7 @@ export function SettingsModal() {
         setIsLive,
         globeTheme,
         setGlobeTheme,
+        setShowLoadingScreen,
     } = useConnectionStore();
 
     if (!showSettingsModal) return null;
@@ -210,10 +212,10 @@ export function SettingsModal() {
                                 <span>3D Globe Visual Style</span>
                             </span>
                             <span className="text-[10px] font-mono text-cyan-400">
-                                {GLOBE_THEMES[globeTheme]?.name || 'Wonderful AI'} Active
+                                {GLOBE_THEMES[globeTheme]?.name || 'Black Dots'} Active
                             </span>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {Object.values(GLOBE_THEMES).map((theme) => {
                                 const isSelected = theme.id === globeTheme;
                                 return (
@@ -342,10 +344,24 @@ export function SettingsModal() {
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
-                    <span className="text-xs font-mono" style={{ color: 'var(--color-text-muted)' }}>
-                        SignalMap Telemetry Engine • v0.3.0
-                    </span>
+                <div className="flex items-center justify-between pt-4 border-t flex-wrap gap-2" style={{ borderColor: 'var(--color-border)' }}>
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs font-mono" style={{ color: 'var(--color-text-muted)' }}>
+                            SignalMap Telemetry Engine • v0.3.0
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setShowSettingsModal(false);
+                                setShowLoadingScreen(true);
+                            }}
+                            className="px-2.5 py-1 rounded-lg border text-[11px] font-mono text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/10 flex items-center gap-1.5 transition"
+                            title="Replay the SignalMap Antigravity Launch Experience"
+                        >
+                            <Rocket className="w-3 h-3 text-cyan-400" />
+                            <span>Replay Launch Screen</span>
+                        </button>
+                    </div>
                     <button
                         onClick={() => setShowSettingsModal(false)}
                         className="btn btn-active px-5 py-2 text-xs font-bold"

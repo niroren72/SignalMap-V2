@@ -16,31 +16,33 @@ import { NetworkUtils } from './components/NetworkUtils';
 import { ModulesView } from './components/ModulesView';
 import { DashboardView } from './components/DashboardView';
 
+import { LoadingScreen } from './components/LoadingScreen';
+
 export default function App() {
-    const { activeView, showUploadModal, setShowUploadModal, layoutTheme } = useConnectionStore();
+    const {
+        activeView,
+        showUploadModal,
+        setShowUploadModal,
+        layoutTheme,
+        showLoadingScreen,
+        setShowLoadingScreen,
+    } = useConnectionStore();
     const loaded = useInitialEvents();
     useWebSocket();
-
-    // Show a loading state until initial batch loads
-    if (!loaded) {
-        return (
-            <div
-                data-theme={layoutTheme}
-                className="flex items-center justify-center min-h-screen w-full bg-[#070b12] text-slate-200"
-            >
-                <div className="font-mono text-sm font-medium flex items-center gap-3 text-emerald-400">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                    Initializing SignalMap Aerospace Engine...
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div
             data-theme={layoutTheme}
             className="flex min-h-screen w-full bg-[#070b12] text-slate-200 antialiased selection:bg-emerald-500/30 selection:text-emerald-200"
         >
+            {/* ── Antigravity Loading Screen with SignalMap Logo & Flying Dots ── */}
+            {showLoadingScreen && (
+                <LoadingScreen
+                    loaded={loaded}
+                    onComplete={() => setShowLoadingScreen(false)}
+                />
+            )}
+
             {/* BEGIN: LeftIconSidebar */}
             <Sidebar />
 
