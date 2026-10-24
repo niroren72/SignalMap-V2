@@ -39,11 +39,11 @@ export const GLOBE_THEMES: Record<GlobeThemeId, GlobeThemeConfig> = {
     'black-dots': {
         id: 'black-dots',
         name: 'Black Dots',
-        subtitle: 'Monochrome Starlight',
-        tag: 'Minimalist • download.png',
-        badge: 'Minimalist',
+        subtitle: 'Dancing Starlight Particles',
+        tag: 'Wonderful.ai • Particle Field',
+        badge: 'Wonderful.ai',
         description:
-            'Pitch black void sphere with thousands of fine silver-white starlight continent dots, pure obsidian oceans, and delicate ethereal halo rim.',
+            'Authentic Wonderful.ai particle globe: 16,700 dancing land dots floating and wandering around themselves, 100% black void oceans, matte non-shining starlight, and 2,200 outer space dust particles.',
         textureUrl: '/assets/earth/earth-black-dots.png',
         atmosphereColor: 'rgba(226, 232, 240, 0.25)',
         atmosphereAltitude: 0.025,
