@@ -5,10 +5,89 @@ interface LoadingScreenProps {
     onComplete: () => void;
 }
 
-// ── Fast 2D Simplex Noise for Organic Fluid Swirl (Matches Google Antigravity snoise) ──
-function createNoise() {
+// ── Remotion Animation Primitives (Easing, Spring & Interpolation) ──
+
+/**
+ * Remotion-standard cubic bezier easing: Easing.bezier(0.16, 1, 0.3, 1)
+ * Used by Apple design engineering and Remotion for fluid momentum curves.
+ */
+function remotionCubicBezier(p1x: number, p1y: number, p2x: number, p2y: number) {
+    const cx = 3 * p1x;
+    const bx = 3 * (p2x - p1x) - cx;
+    const ax = 1 - cx - bx;
+
+    const cy = 3 * p1y;
+    const by = 3 * (p2y - p1y) - cy;
+    const ay = 1 - cy - by;
+
+    function sampleCurveX(t: number) {
+        return ((ax * t + bx) * t + cx) * t;
+    }
+
+    function sampleCurveY(t: number) {
+        return ((ay * t + by) * t + cy) * t;
+    }
+
+    function solveCurveX(x: number) {
+        let t0 = 0;
+        let t1 = 1;
+        let t2 = x;
+        for (let i = 0; i < 8; i++) {
+            const x2 = sampleCurveX(t2) - x;
+            if (Math.abs(x2) < 1e-4) return t2;
+            const d2 = (3 * ax * t2 + 2 * bx) * t2 + cx;
+            if (Math.abs(d2) < 1e-5) break;
+            t2 = t2 - x2 / d2;
+        }
+        while (t0 < t1) {
+            const x2 = sampleCurveX(t2);
+            if (Math.abs(x2 - x) < 1e-4) return t2;
+            if (x > x2) t0 = t2;
+            else t1 = t2;
+            t2 = (t1 - t0) * 0.5 + t0;
+        }
+        return t2;
+    }
+
+    return function (x: number): number {
+        return sampleCurveY(solveCurveX(Math.max(0, Math.min(1, x))));
+    };
+}
+
+const easeAntigravity = remotionCubicBezier(0.16, 1, 0.3, 1);
+
+/**
+ * Remotion interpolate implementation
+ */
+function remotionInterpolate(
+    input: number,
+    inputRange: [number, number],
+    outputRange: [number, number],
+    options?: {
+        extrapolateLeft?: 'clamp' | 'extend';
+        extrapolateRight?: 'clamp' | 'extend';
+        easing?: (t: number) => number;
+    }
+): number {
+    const [inMin, inMax] = inputRange;
+    const [outMin, outMax] = outputRange;
+    if (inMax === inMin) return outMin;
+    let t = (input - inMin) / (inMax - inMin);
+
+    if (options?.extrapolateLeft === 'clamp' && t < 0) t = 0;
+    if (options?.extrapolateRight === 'clamp' && t > 1) t = 1;
+
+    if (options?.easing) {
+        t = options.easing(Math.max(0, Math.min(1, t)));
+    }
+
+    return outMin + t * (outMax - outMin);
+}
+
+// ── 2D/3D Simplex Noise (Exact match to Google Antigravity snoise shader) ──
+function createAntigravityNoise() {
     const p = new Uint8Array(256);
-    const seed = 99;
+    const seed = 127;
     let s = seed;
     for (let i = 0; i < 256; i++) {
         s = (s * 16807 + 11) % 2147483647;
@@ -22,7 +101,7 @@ function createNoise() {
     const grad3 = [
         [1, 1, 0], [-1, 1, 0], [1, -1, 0], [-1, -1, 0],
         [1, 0, 1], [-1, 0, 1], [1, 0, -1], [-1, 0, -1],
-        [0, 1, 1], [0, -1, 1], [0, 1, -1], [0, -1, -1]
+        [0, 1, 1], [0, -1, 1], [0, 1, -1], [0, -1, -1],
     ];
 
     return function noise2D(xin: number, yin: number): number {
@@ -77,22 +156,89 @@ function createNoise() {
     };
 }
 
-interface CirclingDot {
-    angle: number;          // Current angular position around mouse
-    speed: number;          // Orbit angular velocity
-    direction: 1 | -1;      // Orbit direction
-    orbitRadius: number;    // Base distance from mouse pointer
-    radiusVariation: number;// Sine breathing scale
-    size: number;           // Dot radius (px)
-    color: string;          // Vivid Google / Antigravity color
-    alpha: number;          // Opacity
-    pulsePhase: number;
-    pulseSpeed: number;
-    x: number;              // Current interpolated world position
+// ── Particle Data Structures ──
+
+interface FieldParticle {
+    baseX: number;           // Normalized reference anchor [0, 1]
+    baseY: number;           // Normalized reference anchor [0, 1]
+    x: number;               // Current world position (px)
     y: number;
     prevX: number;
     prevY: number;
-    trailDelay: number;     // Inertia drag factor
+    size: number;            // Radius / semi-minor axis (px)
+    color: string;           // Tri-color blended Google palette
+    alpha: number;           // Target opacity
+    seed: number;            // Random phase offset
+    scale: number;           // Dynamic scale [0..1]
+    velocity: number;        // Inertial velocity from shockwave
+}
+
+interface OrbitalSatellite {
+    angle: number;           // Radial orbital angle
+    speed: number;           // Angular velocity
+    orbitRadius: number;     // Distance from gravity center
+    radiusVariation: number; // Harmonic breath scale
+    size: number;
+    color: string;
+    alpha: number;
+    pulsePhase: number;
+    pulseSpeed: number;
+    x: number;
+    y: number;
+    prevX: number;
+    prevY: number;
+    trailDelay: number;
+}
+
+// Google Antigravity Brand Palette
+const ANTIGRAVITY_COLORS = {
+    blue: '#3186FF',    // Electric Cobalt Blue
+    royal: '#4285F4',   // Google Royal Blue
+    coral: '#FC413D',   // Crimson Coral Red
+    red: '#EA4335',     // Google Bright Red
+    amber: '#FBBC04',   // Solar Warm Gold
+    yellow: '#FFEE48',  // Radiant Yellow
+    emerald: '#00B95C',  // Emerald Green
+    mint: '#34A853',    // Mint Green
+    periwinkle: '#7189FF', // Antigravity Lavender / Violet
+    sky: '#8AB4F8',     // Starlight Sky Blue
+    white: '#FFFFFF',   // Starlight White
+};
+
+const COLOR_SWATCHES = [
+    ANTIGRAVITY_COLORS.blue,
+    ANTIGRAVITY_COLORS.periwinkle,
+    ANTIGRAVITY_COLORS.sky,
+    ANTIGRAVITY_COLORS.coral,
+    ANTIGRAVITY_COLORS.emerald,
+    ANTIGRAVITY_COLORS.white,
+];
+
+// Helper: smoothstep equivalent
+function smoothstep(min: number, max: number, value: number): number {
+    const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
+    return x * x * (3 - 2 * x);
+}
+
+// Helper: color interpolator matching the Antigravity shader mix (Electric Blue -> Periwinkle -> Starlight Sky)
+function interpolateTriColor(t: number): string {
+    const clamped = Math.max(0, Math.min(1, t));
+    const h = 0.5;
+    if (clamped < h) {
+        // Mix Google Electric Blue (#3186FF) to Periwinkle (#7189FF)
+        const p = clamped / h;
+        const r = Math.round(49 + (113 - 49) * p);
+        const g = Math.round(134 + (137 - 134) * p);
+        const b = Math.round(255 + (255 - 255) * p);
+        return `rgb(${r}, ${g}, ${b})`;
+    } else {
+        // Mix Periwinkle (#7189FF) to Starlight Sky Blue (#8AB4F8)
+        const p = (clamped - h) / (1 - h);
+        const r = Math.round(113 + (138 - 113) * p);
+        const g = Math.round(137 + (180 - 137) * p);
+        const b = Math.round(255 + (248 - 255) * p);
+        return `rgb(${r}, ${g}, ${b})`;
+    }
 }
 
 export function LoadingScreen({ onComplete }: LoadingScreenProps) {
@@ -101,7 +247,7 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
     const [statusIndex, setStatusIndex] = useState(0);
     const [isExiting, setIsExiting] = useState(false);
 
-    // 5 distinct 1-second initialization status steps
+    // 5 telemetry initialization milestones
     const statusSteps = [
         'INITIALIZING SIGNALMAP AEROSPACE ENGINE...',
         'CONNECTING ANTIGRAVITY TELEMETRY FIELD...',
@@ -110,7 +256,7 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
         'READY // ORBITAL LOCK CONFIRMED',
     ];
 
-    // ── Enforce Exact 5.0 Seconds Loading Duration ──
+    // ── Enforce 5.0s Duration with Remotion-Smooth Interpolation ──
     useEffect(() => {
         const TOTAL_DURATION_MS = 5000;
         const startTime = performance.now();
@@ -118,13 +264,22 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
         const timer = setInterval(() => {
             const now = performance.now();
             const elapsed = now - startTime;
-            const currentPct = Math.min(100, (elapsed / TOTAL_DURATION_MS) * 100);
+            const rawProgress = Math.min(1, elapsed / TOTAL_DURATION_MS);
 
-            setProgress(Math.floor(currentPct));
+            // Remotion cubic bezier ease for realistic physics momentum
+            const smoothPct = Math.floor(
+                remotionInterpolate(rawProgress, [0, 1], [0, 100], {
+                    easing: easeAntigravity,
+                    extrapolateLeft: 'clamp',
+                    extrapolateRight: 'clamp',
+                })
+            );
+
+            setProgress(smoothPct);
 
             const step = Math.min(
                 statusSteps.length - 1,
-                Math.floor((elapsed / TOTAL_DURATION_MS) * statusSteps.length)
+                Math.floor(rawProgress * statusSteps.length)
             );
             setStatusIndex(step);
 
@@ -133,20 +288,19 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
                 setProgress(100);
                 setStatusIndex(statusSteps.length - 1);
 
-                // Trigger smooth 700ms exit fade
                 setTimeout(() => {
                     setIsExiting(true);
                     setTimeout(() => {
                         onComplete();
                     }, 700);
-                }, 100);
+                }, 120);
             }
-        }, 30);
+        }, 20);
 
         return () => clearInterval(timer);
     }, [onComplete, statusSteps.length]);
 
-    // ── Flying Dots Circling ONLY Around Mouse Pointer (Exact antigravity.google match) ──
+    // ── Exact Antigravity Warp Field & Orbital Satellite Canvas Simulation ──
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -160,7 +314,7 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
 
         const handleResize = () => {
             if (!canvas) return;
-            const dpr = window.devicePixelRatio || 1;
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
             width = window.innerWidth;
             height = window.innerHeight;
             canvas.width = width * dpr;
@@ -173,160 +327,290 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
         handleResize();
         window.addEventListener('resize', handleResize);
 
-        const noise2D = createNoise();
+        const noise2D = createAntigravityNoise();
 
-        // Exact Google Antigravity Multicolored Palette
-        const antigravityColors = [
-            '#3186FF', // Google Electric Blue
-            '#4285F4', // Google Royal Blue
-            '#FC413D', // Google Crimson Red
-            '#EA4335', // Google Coral Red
-            '#FBBC04', // Google Warm Gold
-            '#FFEE48', // Google Bright Yellow
-            '#00B95C', // Google Emerald Green
-            '#34A853', // Google Mint Green
-            '#7189FF', // Antigravity Lilac / Periwinkle
-            '#8AB4F8', // Starlight Sky Blue
-            '#FFFFFF', // Pure Starlight White
-        ];
-
-        // Anchor mouse initially to screen center where the logo resides
-        let mouseX = width * 0.5;
-        let mouseY = height * 0.44;
-        let targetX = mouseX;
-        let targetY = mouseY;
-        let hasUserMovedMouse = false;
+        // Gravitational ring center & mouse tracking state
+        let targetX = width * 0.5;
+        let targetY = height * 0.44;
+        let ringX = targetX;
+        let ringY = targetY;
+        let isMouseActive = false;
 
         const handleMouseMove = (e: MouseEvent) => {
             targetX = e.clientX;
             targetY = e.clientY;
-            hasUserMovedMouse = true;
+            isMouseActive = true;
         };
 
         window.addEventListener('mousemove', handleMouseMove);
 
-        // Populate ~55-60 vibrant dots clustered ONLY around the pointer
-        const dotCount = 58;
-        const dots: CirclingDot[] = [];
+        // 1. Generate Ambient Antigravity Field Particles (Hexagonal/organic field distribution)
+        const fieldParticles: FieldParticle[] = [];
+        const cols = 16;
+        const rows = 10;
+        const totalField = cols * rows;
 
-        for (let i = 0; i < dotCount; i++) {
-            // Wider concentric orbit shells around the mouse (from 36px to 155px)
-            const shellTier = i % 5;
-            const minR = 36 + shellTier * 24;
-            const maxR = minR + 22;
+        for (let i = 0; i < totalField; i++) {
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+
+            // Jittered grid positions across viewport
+            const jitterX = (Math.random() - 0.5) * 0.05;
+            const jitterY = (Math.random() - 0.5) * 0.06;
+            const baseX = (col + 0.5) / cols + jitterX;
+            const baseY = (row + 0.5) / rows + jitterY;
+
+            const initialX = baseX * width;
+            const initialY = baseY * height;
+
+            fieldParticles.push({
+                baseX,
+                baseY,
+                x: initialX,
+                y: initialY,
+                prevX: initialX,
+                prevY: initialY,
+                size: Math.random() < 0.15 ? Math.random() * 0.4 + 1.2 : Math.random() * 0.4 + 0.75,
+                color: COLOR_SWATCHES[i % COLOR_SWATCHES.length],
+                alpha: Math.random() * 0.25 + 0.35,
+                seed: Math.random() * 100,
+                scale: 0.2,
+                velocity: 0,
+            });
+        }
+
+        // 2. Generate Focused Orbital Satellites circling the Antigravity core
+        const orbitalSatellites: OrbitalSatellite[] = [];
+        const orbitalCount = 42;
+
+        for (let i = 0; i < orbitalCount; i++) {
+            const shell = i % 4;
+            const minR = 34 + shell * 22;
+            const maxR = minR + 20;
             const orbitRadius = Math.random() * (maxR - minR) + minR;
 
-            // Slower, calmer orbital velocities and bidirectional drift
-            const speed = (Math.random() * 0.8 + 0.6) * (shellTier % 2 === 0 ? 1 : -1);
-            const color = antigravityColors[i % antigravityColors.length];
-
+            // Slower, elegant orbital velocities with dual spin directions
+            const speed = (Math.random() * 0.7 + 0.5) * (shell % 2 === 0 ? 1 : -1);
             const initialAngle = Math.random() * Math.PI * 2;
-            const initialX = targetX + Math.cos(initialAngle) * orbitRadius;
-            const initialY = targetY + Math.sin(initialAngle) * orbitRadius;
+            const initialX = ringX + Math.cos(initialAngle) * orbitRadius;
+            const initialY = ringY + Math.sin(initialAngle) * orbitRadius;
 
-            dots.push({
+            orbitalSatellites.push({
                 angle: initialAngle,
                 speed,
-                direction: speed >= 0 ? 1 : -1,
                 orbitRadius,
-                radiusVariation: Math.random() * 16 + 8,
-                size: Math.random() < 0.25 ? Math.random() * 1.2 + 2.4 : Math.random() * 0.9 + 1.3,
-                color,
-                alpha: Math.random() * 0.25 + 0.35, // Softer, less glaring brightness
+                radiusVariation: Math.random() * 14 + 6,
+                size: Math.random() < 0.2 ? Math.random() * 0.4 + 1.2 : Math.random() * 0.4 + 0.8,
+                color: COLOR_SWATCHES[i % COLOR_SWATCHES.length],
+                alpha: Math.random() * 0.3 + 0.45,
                 pulsePhase: Math.random() * Math.PI * 2,
                 pulseSpeed: Math.random() * 0.03 + 0.015,
                 x: initialX,
                 y: initialY,
                 prevX: initialX,
                 prevY: initialY,
-                trailDelay: Math.random() * 0.10 + 0.14, // Fluid organic lag
+                trailDelay: Math.random() * 0.08 + 0.14,
             });
         }
 
         let time = 0;
 
-        // ── Main Render Loop ──
+        // ── Main Simulation Loop Matching Google Antigravity Shaders ──
         const render = () => {
-            time += 0.012; // Calmer noise and breathing frequency
+            time += 0.014;
             ctx.clearRect(0, 0, width, height);
 
-            // Smooth pointer tracking with soft inertia
-            const followSpeed = hasUserMovedMouse ? 0.20 : 0.04;
-            mouseX += (targetX - mouseX) * followSpeed;
-            mouseY += (targetY - mouseY) * followSpeed;
+            // Remotion-like spring follow for gravitational ring center
+            const springStiffness = isMouseActive ? 0.08 : 0.025;
+            ringX += (targetX - ringX) * springStiffness;
+            ringY += (targetY - ringY) * springStiffness;
 
-            // Soft, gentle mouse halo illumination matched to wider radius
-            const haloGrad = ctx.createRadialGradient(mouseX, mouseY, 0, mouseX, mouseY, 190);
-            haloGrad.addColorStop(0, 'rgba(113, 137, 255, 0.08)');
-            haloGrad.addColorStop(0.5, 'rgba(49, 134, 255, 0.02)');
+            // Natural floating idle sway when mouse is stationary
+            const idleDriftX = Math.sin(time * 0.8) * 12 + Math.cos(time * 1.6) * 6;
+            const idleDriftY = Math.cos(time * 0.7) * 8 + Math.sin(time * 1.4) * 5;
+            const currentCoreX = ringX + idleDriftX;
+            const currentCoreY = ringY + idleDriftY;
+
+            // ── Exact Antigravity Ring Parameters ──
+            // uRingRadius = 0.175 + sin(time * 1.0) * 0.03 + cos(time * 3.0) * 0.02
+            const maxDim = Math.max(width, height);
+            const normRingRadius = 0.18 + Math.sin(time * 1.0) * 0.035 + Math.cos(time * 2.8) * 0.02;
+            const pixelRingRadius = normRingRadius * maxDim;
+            const pixelRingWidth = 0.012 * maxDim;
+            const pixelRingWidth2 = 0.09 * maxDim;
+            const ringDisplacement = 0.55;
+
+            // Soft radial gravitational glow centered on ring
+            const haloGrad = ctx.createRadialGradient(
+                currentCoreX, currentCoreY, 0,
+                currentCoreX, currentCoreY, pixelRingRadius * 1.3
+            );
+            haloGrad.addColorStop(0, 'rgba(49, 134, 255, 0.09)');
+            haloGrad.addColorStop(0.35, 'rgba(113, 137, 255, 0.04)');
+            haloGrad.addColorStop(0.8, 'rgba(252, 65, 61, 0.015)');
             haloGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
             ctx.fillStyle = haloGrad;
             ctx.beginPath();
-            ctx.arc(mouseX, mouseY, 190, 0, Math.PI * 2);
+            ctx.arc(currentCoreX, currentCoreY, pixelRingRadius * 1.3, 0, Math.PI * 2);
             ctx.fill();
 
-            // Render each circling dot ONLY around mouse pointer
-            for (let i = 0; i < dots.length; i++) {
-                const dot = dots[i];
+            // ── Pass 1: Render Field Particles with Warp Shockwave & Capsule Rotation ──
+            for (let i = 0; i < fieldParticles.length; i++) {
+                const p = fieldParticles[i];
 
-                // 1. Advance angular orbit around pointer (slower float)
-                dot.angle += dot.speed * 0.015;
+                const refX = p.baseX * width;
+                const refY = p.baseY * height;
 
-                // 2. Organic fluid swirl displacement (Simplex Noise radial turbulence)
-                const noiseVal = noise2D(
-                    Math.cos(dot.angle) * 1.6 + time * 0.3,
-                    Math.sin(dot.angle) * 1.6 + (i * 0.1)
-                );
-                const currentOrbitR = dot.orbitRadius + Math.sin(time * 2.0 + dot.pulsePhase) * dot.radiusVariation + (noiseVal * 12);
+                // 1. Distance from expanding warp ring
+                const dx = refX - currentCoreX;
+                const dy = refY - currentCoreY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
 
-                // 3. Compute target orbit coordinate centered on mouseX, mouseY
-                const destX = mouseX + Math.cos(dot.angle) * currentOrbitR;
-                const destY = mouseY + Math.sin(dot.angle) * currentOrbitR;
+                // 2. Multi-scale noise displacement (Shader match)
+                const noise1 = noise2D(p.baseX * 4.0 + 88.494, p.baseY * 4.0 + time * 0.35);
+                const noise2 = noise2D(p.baseX * 4.0 + 50.904, p.baseY * 4.0 + time * 0.35);
+                const noise3 = noise2D(p.baseX * 18.0 + 18.492, p.baseY * 18.0 + time * 0.5);
+                const noise4 = noise2D(p.baseX * 18.0 + 50.904, p.baseY * 18.0 + time * 0.5);
 
-                // 4. Smooth momentum interpolation (fluid trail when mouse moves)
-                dot.prevX = dot.x;
-                dot.prevY = dot.y;
-                dot.x += (destX - dot.x) * dot.trailDelay;
-                dot.y += (destY - dot.y) * dot.trailDelay;
+                let dispX = (noise1 * 0.03 + noise3 * 0.006) * width;
+                let dispY = (noise2 * 0.03 + noise4 * 0.006) * height;
 
-                // 5. Velocity vector & flow orientation
-                const curVx = dot.x - dot.prevX;
-                const curVy = dot.y - dot.prevY;
+                // Harmonic sine drift
+                const distClamp = Math.min(1, Math.max(0, dist / (maxDim * 0.5)));
+                dispX += Math.sin(p.baseX * 20.0 + time * 3.5) * 14 * distClamp;
+                dispY += Math.cos(p.baseY * 20.0 + time * 2.8) * 14 * distClamp;
+
+                // 3. Shockwave impulse from ring wave:
+                // float t = smoothstep(uRingRadius - uRingWidth*2, uRingRadius, dist) - smoothstep(uRingRadius, uRingRadius + uRingWidth, dist)
+                const tWave =
+                    smoothstep(pixelRingRadius - pixelRingWidth * 2, pixelRingRadius, dist) -
+                    smoothstep(pixelRingRadius, pixelRingRadius + pixelRingWidth, dist);
+                const tWave2 =
+                    smoothstep(pixelRingRadius - pixelRingWidth2 * 2, pixelRingRadius, dist) -
+                    smoothstep(pixelRingRadius, pixelRingRadius + pixelRingWidth2, dist);
+
+                const waveScale = Math.pow(Math.max(0, tWave), 2) + Math.pow(Math.max(0, tWave2), 3) * 2.8;
+
+                // Radial shockwave push/pull
+                const ringPush = Math.pow(Math.max(0, tWave2), 0.75) * ringDisplacement * 45;
+                const pushAngle = Math.atan2(dy, dx);
+                const pushX = Math.cos(pushAngle) * ringPush;
+                const pushY = Math.sin(pushAngle) * ringPush;
+
+                const targetWorldX = refX + dispX + pushX;
+                const targetWorldY = refY + dispY + pushY;
+
+                // Smooth momentum interpolation
+                p.prevX = p.x;
+                p.prevY = p.y;
+                p.x += (targetWorldX - p.x) * 0.12;
+                p.y += (targetWorldY - p.y) * 0.12;
+
+                const curVx = p.x - p.prevX;
+                const curVy = p.y - p.prevY;
                 const speedMag = Math.sqrt(curVx * curVx + curVy * curVy);
-                const flowAngle = Math.atan2(curVy, curVx);
 
-                // 6. Dot stretch factor (elongates into fluid orbiting capsule when moving)
-                const stretch = Math.min(2.6, 1 + speedMag * 0.30);
+                // 4. Orientation: align capsule radially + local turbulence
+                const baseAngle = Math.atan2(p.y - currentCoreY, p.x - currentCoreX);
+                const noiseAngle = noise2D(p.baseX * 10.0, p.baseY * 10.0 + time * 0.85);
+                const rotation = baseAngle + noiseAngle * 0.45;
 
-                // 7. Soft pulsing breathing glow (calm, less bright)
-                dot.pulsePhase += dot.pulseSpeed;
-                const pulseAlpha = dot.alpha + Math.sin(dot.pulsePhase) * 0.10;
-                const finalAlpha = Math.max(0.18, Math.min(0.65, pulseAlpha));
+                // 5. Dynamic scale & capsule elongation (refined, delicate starlight scale)
+                p.scale += (waveScale - p.scale) * 0.18;
+                const stretch = Math.min(1.7, 1.0 + speedMag * 0.16 + waveScale * 0.35);
+                const rx = p.size * (1 + p.scale * 0.25) * stretch;
+                const ry = p.size * (1 + p.scale * 0.15);
 
-                // 8. Draw oriented colored dot circling the mouse pointer
+                // 6. Tri-color blend based on local noise and ring wave
+                const noiseColorVal = (noise2D(p.baseX * 3.0 + 74.6, p.baseY * 3.0 + time * 0.4) + 1) * 0.5;
+                const colorProg = Math.max(0, Math.min(1, Math.pow(noiseColorVal, 1.8) + waveScale * 0.35));
+                const activeColor = interpolateTriColor(colorProg);
+
+                const finalAlpha = Math.max(0.15, Math.min(0.85, p.alpha + waveScale * 0.35));
+
+                // Draw oriented capsule
                 ctx.save();
-                ctx.translate(dot.x, dot.y);
-                ctx.rotate(flowAngle);
+                ctx.translate(p.x, p.y);
+                ctx.rotate(rotation);
 
-                // Softer neon glow (subtle aura rather than harsh blinding glare)
-                ctx.shadowColor = dot.color;
-                ctx.shadowBlur = speedMag > 1.8 ? 6 : 3;
-                ctx.fillStyle = dot.color;
+                ctx.shadowColor = activeColor;
+                ctx.shadowBlur = waveScale > 0.3 ? 5 : 2;
+                ctx.fillStyle = activeColor;
                 ctx.globalAlpha = finalAlpha;
 
-                // Draw capsule / circular dot
-                const rx = dot.size * stretch;
-                const ry = dot.size;
                 ctx.beginPath();
                 ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Gentle core highlight only on largest particles
-                if (dot.size > 2.5) {
+                // Gentle starlight glint for particles undergoing high wave displacement
+                if (waveScale > 0.4) {
                     ctx.fillStyle = '#FFFFFF';
-                    ctx.globalAlpha = finalAlpha * 0.3;
+                    ctx.globalAlpha = finalAlpha * 0.6;
                     ctx.beginPath();
-                    ctx.ellipse(0, 0, rx * 0.4, ry * 0.4, 0, 0, Math.PI * 2);
+                    ctx.ellipse(0, 0, rx * 0.45, ry * 0.45, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+
+            // ── Pass 2: Render High-Speed Orbital Satellites around Gravity Core ──
+            for (let i = 0; i < orbitalSatellites.length; i++) {
+                const s = orbitalSatellites[i];
+
+                // Advance orbit
+                s.angle += s.speed * 0.016;
+
+                // Breathing variation + local swirl turbulence
+                const swirlNoise = noise2D(
+                    Math.cos(s.angle) * 1.5 + time * 0.35,
+                    Math.sin(s.angle) * 1.5 + i * 0.15
+                );
+                const currentRadius =
+                    s.orbitRadius +
+                    Math.sin(time * 2.2 + s.pulsePhase) * s.radiusVariation +
+                    swirlNoise * 14;
+
+                const destX = currentCoreX + Math.cos(s.angle) * currentRadius;
+                const destY = currentCoreY + Math.sin(s.angle) * currentRadius;
+
+                // Inertial fluid trail
+                s.prevX = s.x;
+                s.prevY = s.y;
+                s.x += (destX - s.x) * s.trailDelay;
+                s.y += (destY - s.y) * s.trailDelay;
+
+                const svx = s.x - s.prevX;
+                const svy = s.y - s.prevY;
+                const sSpeed = Math.sqrt(svx * svx + svy * svy);
+                const flowAngle = Math.atan2(svy, svx);
+
+                s.pulsePhase += s.pulseSpeed;
+                const pulseA = s.alpha + Math.sin(s.pulsePhase) * 0.12;
+                const finalA = Math.max(0.2, Math.min(0.85, pulseA));
+
+                const stretch = Math.min(1.7, 1.0 + sSpeed * 0.16);
+                const srx = s.size * stretch;
+                const sry = s.size;
+
+                ctx.save();
+                ctx.translate(s.x, s.y);
+                ctx.rotate(flowAngle);
+
+                ctx.shadowColor = s.color;
+                ctx.shadowBlur = sSpeed > 1.5 ? 6 : 3;
+                ctx.fillStyle = s.color;
+                ctx.globalAlpha = finalA;
+
+                ctx.beginPath();
+                ctx.ellipse(0, 0, srx, sry, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (s.size > 1.3) {
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.globalAlpha = finalA * 0.45;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, srx * 0.4, sry * 0.4, 0, 0, Math.PI * 2);
                     ctx.fill();
                 }
 
@@ -351,20 +635,20 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
                 isExiting ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
             }`}
         >
-            {/* ── Canvas: Flying Dots Circling ONLY Around Mouse Pointer ── */}
+            {/* ── Antigravity Warp Canvas: Expanding Shockwave Field + Orbital Satellites ── */}
             <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-20" />
 
-            {/* ── Soft Ambient Background Atmosphere ── */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-tr from-[#3186FF]/10 via-[#7189FF]/8 to-transparent rounded-full blur-[130px] pointer-events-none z-0" />
+            {/* ── Ambient Antigravity Nebula Atmosphere ── */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] bg-gradient-to-tr from-[#3186FF]/12 via-[#7189FF]/8 to-transparent rounded-full blur-[140px] pointer-events-none z-0" />
 
             {/* ── Central SignalMap Hero Branding Container ── */}
             <div className="relative z-10 flex flex-col items-center max-w-lg px-6 text-center animate-fade-in pointer-events-auto">
                 {/* Precision Aerospace Logo Emblem */}
                 <div className="relative flex items-center justify-center mb-8">
-                    {/* Outer Rotating Dashed Ring */}
+                    {/* Outer Rotating Dashed Gravitational Ring */}
                     <div className="absolute w-28 h-28 rounded-full border border-dashed border-[#7189FF]/40 animate-[spin_24s_linear_infinite]" />
 
-                    {/* Counter-Rotating Inner Ring */}
+                    {/* Counter-Rotating Inner Field Ring */}
                     <div className="absolute w-24 h-24 rounded-full border border-[#3186FF]/35 animate-[spin_16s_linear_infinite_reverse]" />
 
                     {/* Concentric Pulsing Radar Blip Wave */}
@@ -422,7 +706,7 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
                     </p>
                 </div>
 
-                {/* 5-Second Precision Progress Track with Shimmer */}
+                {/* 5-Second Precision Progress Track with Remotion Easing */}
                 <div className="w-64 md:w-80 flex flex-col gap-2.5 mb-5">
                     <div className="relative w-full h-1.5 rounded-full bg-slate-800/80 overflow-hidden border border-slate-700/60 p-[1px]">
                         <div
