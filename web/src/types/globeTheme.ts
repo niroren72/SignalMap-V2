@@ -45,19 +45,19 @@ export const GLOBE_THEMES: Record<GlobeThemeId, GlobeThemeConfig> = {
         description:
             'Pitch black void sphere with thousands of fine silver-white starlight continent dots, pure obsidian oceans, and delicate ethereal halo rim.',
         textureUrl: '/assets/earth/earth-black-dots.png',
-        atmosphereColor: '#cbd5e1',
-        atmosphereAltitude: 0.15,
+        atmosphereColor: 'rgba(226, 232, 240, 0.25)',
+        atmosphereAltitude: 0.025,
         backgroundColor: 'rgba(0, 0, 0, 0)',
         originColor: '#ffffff',
-        ringMaxRadius: 5.5,
+        ringMaxRadius: 5.0,
         ringPropagationSpeed: 1.8,
-        ringRepeatPeriod: 1600,
-        ringColor: (t: number) => `rgba(226, 232, 240, ${Math.max(0, (1 - t) * 0.65)})`,
+        ringRepeatPeriod: 1800,
+        ringColor: (t: number) => `rgba(226, 232, 240, ${Math.max(0, (1 - t) * 0.5)})`,
         arcColors: (event: any) => {
             if (event?.anomaly?.is_anomaly) {
                 return ['rgba(239, 68, 68, 0.95)', 'rgba(251, 113, 133, 0.95)'];
             }
-            return ['rgba(255, 255, 255, 0.9)', 'rgba(203, 213, 225, 0.95)'];
+            return ['rgba(255, 255, 255, 0.85)', 'rgba(203, 213, 225, 0.35)'];
         },
         pointColor: (p: any) => {
             if (p.hasAnomaly) return p.maxSeverity === 'critical' ? '#ef4444' : '#f43f5e';
@@ -66,8 +66,8 @@ export const GLOBE_THEMES: Record<GlobeThemeId, GlobeThemeConfig> = {
         swatches: ['#000000', '#ffffff', '#e2e8f0', '#94a3b8'],
         previewSwatches: {
             dots: '#ffffff',
-            atmosphere: '#cbd5e1',
-            arc: '#e2e8f0',
+            atmosphere: '#e2e8f0',
+            arc: '#cbd5e1',
         },
     },
 

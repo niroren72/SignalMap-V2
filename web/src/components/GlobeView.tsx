@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import Globe from 'globe.gl';
+import * as THREE from 'three';
 import { useFilteredEvents } from '../hooks/useConnections';
 import { useConnectionStore } from '../stores/connectionStore';
 import {
@@ -18,9 +19,102 @@ import {
 } from 'lucide-react';
 import { GLOBE_THEMES } from '../types/globeTheme';
 
+// Soft radial circular starlight dot sprite for 3D orbital space dust
+function createParticleTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+        const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+        grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+        grad.addColorStop(0.35, 'rgba(240, 245, 255, 0.85)');
+        grad.addColorStop(0.7, 'rgba(200, 220, 255, 0.25)');
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 32, 32);
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    return texture;
+}
+
+// 1-pixel circular perimeter silhouette rim framing the globe against space (matching download.png)
+function createSilhouetteRing(): THREE.LineLoop {
+    const segments = 180;
+    const points: THREE.Vector3[] = [];
+    const radius = 100.18; // slightly above ThreeGlobe radius 100
+    for (let i = 0; i <= segments; i++) {
+        const theta = (i / segments) * Math.PI * 2;
+        points.push(new THREE.Vector3(Math.cos(theta) * radius, Math.sin(theta) * radius, 0));
+    }
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.28,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+    });
+    const ring = new THREE.LineLoop(geometry, material);
+    ring.name = 'black-dots-silhouette-ring';
+    // Billboard towards camera on every frame
+    ring.onBeforeRender = (_renderer, _scene, camera) => {
+        ring.quaternion.copy(camera.quaternion);
+    };
+    return ring;
+}
+
+// Outer orbital starlight dust particles floating in space outside the globe (matching download.png)
+function createOrbitalParticles(): THREE.Points {
+    const particleCount = 140;
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+
+    for (let i = 0; i < particleCount; i++) {
+        // Radius distributed between 101.5 and 124.0 matching download.png
+        const r = 101.5 + Math.pow(Math.random(), 1.6) * 22.5;
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos((Math.random() * 2 - 1) * 0.9);
+
+        positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+        positions[i * 3 + 1] = r * Math.cos(phi);
+        positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+
+        // Soft celestial silver/white brightness variance
+        const brightness = 0.45 + Math.random() * 0.55;
+        colors[i * 3] = brightness;
+        colors[i * 3 + 1] = brightness * 0.98;
+        colors[i * 3 + 2] = brightness * 1.02;
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const material = new THREE.PointsMaterial({
+        size: 2.4,
+        map: createParticleTexture(),
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.85,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+    });
+
+    const points = new THREE.Points(geometry, material);
+    points.name = 'black-dots-orbital-dust';
+    points.onBeforeRender = () => {
+        // Subtle majestic orbital rotation
+        points.rotation.y += 0.0003;
+        points.rotation.x += 0.0001;
+    };
+    return points;
+}
+
 export function GlobeView() {
     const containerRef = useRef<HTMLDivElement>(null);
     const globeRef = useRef<any>(null);
+    const customObjectsRef = useRef<{ rim?: THREE.LineLoop; dust?: THREE.Points } | null>(null);
     const events = useFilteredEvents();
     const setSelectedId = useConnectionStore((s) => s.setSelectedId);
     const diagnosticOverlay = useConnectionStore((s) => s.diagnosticOverlay);
@@ -367,14 +461,68 @@ export function GlobeView() {
         globe.controls().zoomSpeed = 1.2;
         globe.controls().minDistance = 120;
         globe.controls().maxDistance = 480;
-        globe.pointOfView({ lat: 20, lng: 0, altitude: zoom });
+
+        // Custom 3D visual craft for Black Dots starlight theme matching download.png
+        const scene = globe.scene();
+        if (scene) {
+            const rim = createSilhouetteRing();
+            const dust = createOrbitalParticles();
+            scene.add(rim);
+            scene.add(dust);
+            customObjectsRef.current = { rim, dust };
+        }
+
+        // Camera POV: Europe/Africa perspective matching download.png
+        globe.pointOfView({ lat: 18, lng: 16, altitude: 2.2 });
+
+        globe.onGlobeReady(() => {
+            updateThemeCustomObjects();
+        });
 
         globeRef.current = globe;
 
         return () => {
+            if (customObjectsRef.current && scene) {
+                if (customObjectsRef.current.rim) scene.remove(customObjectsRef.current.rim);
+                if (customObjectsRef.current.dust) scene.remove(customObjectsRef.current.dust);
+            }
             globe._destructor();
         };
     }, []);
+
+    // Sync custom 3D scene objects and globe material with active theme
+    const updateThemeCustomObjects = () => {
+        if (!globeRef.current) return;
+        const isBlackDots = globeTheme === 'black-dots';
+
+        if (customObjectsRef.current) {
+            if (customObjectsRef.current.rim) customObjectsRef.current.rim.visible = isBlackDots;
+            if (customObjectsRef.current.dust) customObjectsRef.current.dust.visible = isBlackDots;
+        }
+
+        const mat = globeRef.current.globeMaterial();
+        if (mat) {
+            if (isBlackDots) {
+                mat.color = new THREE.Color(0xffffff);
+                mat.emissive = new THREE.Color(0xffffff);
+                if (mat.map) {
+                    mat.emissiveMap = mat.map;
+                }
+                mat.specular = new THREE.Color(0x000000);
+                mat.shininess = 0;
+                mat.roughness = 1.0;
+                mat.metalness = 0.0;
+            } else {
+                mat.color = new THREE.Color(0xffffff);
+                mat.emissive = new THREE.Color(0x000000);
+                mat.emissiveMap = null;
+                mat.specular = new THREE.Color(0x222222);
+                mat.shininess = 15;
+                mat.roughness = 0.6;
+            }
+            mat.needsUpdate = true;
+        }
+    };
 
     // Reactive theme & atmosphere updates
     useEffect(() => {
@@ -385,7 +533,9 @@ export function GlobeView() {
             .atmosphereColor(enableAtmosphere ? currentTheme.atmosphereColor : 'rgba(0,0,0,0)')
             .atmosphereAltitude(enableAtmosphere ? currentTheme.atmosphereAltitude : 0)
             .backgroundColor(currentTheme.backgroundColor);
-    }, [currentTheme, enableAtmosphere]);
+
+        updateThemeCustomObjects();
+    }, [currentTheme, globeTheme, enableAtmosphere]);
 
     // Reactive autoRotate update
     useEffect(() => {
@@ -436,10 +586,14 @@ export function GlobeView() {
         globeRef.current.pointOfView({ lat, lng, altitude: 1.1 }, 800);
     };
 
-    // Reset view to origin
+    // Reset view to origin (or download.png starlight perspective for Black Dots)
     const flyToOrigin = () => {
         if (!globeRef.current) return;
-        globeRef.current.pointOfView({ lat: origin.lat, lng: origin.lng, altitude: 1.6 }, 800);
+        if (globeTheme === 'black-dots') {
+            globeRef.current.pointOfView({ lat: 18, lng: 16, altitude: 2.2 }, 800);
+        } else {
+            globeRef.current.pointOfView({ lat: origin.lat, lng: origin.lng, altitude: 1.6 }, 800);
+        }
     };
 
     // Handle resize via ResizeObserver on container
