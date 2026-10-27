@@ -80,6 +80,7 @@ interface ConnectionStore {
     showSettingsModal: boolean;
     showUploadModal: boolean;
     showLoadingScreen: boolean;
+    loadingScreenManualDismiss: boolean;
     isSidebarCollapsed: boolean;
     tableHeightMode: TableHeightMode;
     layoutTheme: LayoutTheme;
@@ -119,7 +120,7 @@ interface ConnectionStore {
     // UI Toggle Actions
     setShowSettingsModal: (show: boolean) => void;
     setShowUploadModal: (show: boolean) => void;
-    setShowLoadingScreen: (show: boolean) => void;
+    setShowLoadingScreen: (show: boolean, manualDismiss?: boolean) => void;
     setIsSidebarCollapsed: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
     setTableHeightMode: (mode: TableHeightMode) => void;
     setTableSort: (field: ConnectionStore['tableSortField']) => void;
@@ -160,6 +161,7 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
     showSettingsModal: false,
     showUploadModal: false,
     showLoadingScreen: true,
+    loadingScreenManualDismiss: false,
     isSidebarCollapsed: true,
     tableHeightMode: 'compact',
     layoutTheme: (() => {
@@ -268,7 +270,8 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
     // UI Actions
     setShowSettingsModal: (showSettingsModal) => set({ showSettingsModal }),
     setShowUploadModal: (showUploadModal) => set({ showUploadModal }),
-    setShowLoadingScreen: (showLoadingScreen) => set({ showLoadingScreen }),
+    setShowLoadingScreen: (showLoadingScreen, manualDismiss = false) =>
+        set({ showLoadingScreen, loadingScreenManualDismiss: manualDismiss }),
     setIsSidebarCollapsed: (collapsedOrUpdater) =>
         set((state) => ({
             isSidebarCollapsed:

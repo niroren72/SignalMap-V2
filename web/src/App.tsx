@@ -26,6 +26,7 @@ export default function App() {
         layoutTheme,
         showLoadingScreen,
         setShowLoadingScreen,
+        loadingScreenManualDismiss,
     } = useConnectionStore();
     const loaded = useInitialEvents();
     useWebSocket();
@@ -39,6 +40,7 @@ export default function App() {
             {showLoadingScreen && (
                 <LoadingScreen
                     loaded={loaded}
+                    manualDismiss={loadingScreenManualDismiss}
                     onComplete={() => setShowLoadingScreen(false)}
                 />
             )}

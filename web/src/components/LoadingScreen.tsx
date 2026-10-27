@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { HolographicCardLogo } from './HolographicCardLogo';
 
 interface LoadingScreenProps {
     loaded?: boolean;
+    manualDismiss?: boolean;
     onComplete: () => void;
 }
 
@@ -241,7 +243,7 @@ function interpolateTriColor(t: number): string {
     }
 }
 
-export function LoadingScreen({ onComplete }: LoadingScreenProps) {
+export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScreenProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [progress, setProgress] = useState(0);
     const [statusIndex, setStatusIndex] = useState(0);
@@ -256,9 +258,18 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
         'READY // ORBITAL LOCK CONFIRMED',
     ];
 
-    // ── Enforce 5.0s Duration with Remotion-Smooth Interpolation ──
+    // Dismiss trigger for manual dismiss mode
+    const handleDismiss = useCallback(() => {
+        if (isExiting) return;
+        setIsExiting(true);
+        setTimeout(() => {
+            onComplete();
+        }, 700);
+    }, [isExiting, onComplete]);
+
+    // ── Enforce Duration with Remotion-Smooth Interpolation ──
     useEffect(() => {
-        const TOTAL_DURATION_MS = 5000;
+        const TOTAL_DURATION_MS = manualDismiss ? 3200 : 5000;
         const startTime = performance.now();
 
         const timer = setInterval(() => {
@@ -288,17 +299,20 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
                 setProgress(100);
                 setStatusIndex(statusSteps.length - 1);
 
-                setTimeout(() => {
-                    setIsExiting(true);
+                // If not manual dismiss, automatically exit
+                if (!manualDismiss) {
                     setTimeout(() => {
-                        onComplete();
-                    }, 700);
-                }, 120);
+                        setIsExiting(true);
+                        setTimeout(() => {
+                            onComplete();
+                        }, 700);
+                    }, 120);
+                }
             }
         }, 20);
 
         return () => clearInterval(timer);
-    }, [onComplete, statusSteps.length]);
+    }, [onComplete, manualDismiss, statusSteps.length]);
 
     // ── Exact Antigravity Warp Field & Orbital Satellite Canvas Simulation ──
     useEffect(() => {
@@ -631,9 +645,10 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
 
     return (
         <div
+            onClick={manualDismiss ? handleDismiss : undefined}
             className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#070b12] text-slate-200 select-none overflow-hidden transition-all duration-700 ease-out ${
                 isExiting ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
-            }`}
+            } ${manualDismiss ? 'cursor-pointer' : ''}`}
         >
             {/* ── Antigravity Warp Canvas: Expanding Shockwave Field + Orbital Satellites ── */}
             <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-20" />
@@ -643,56 +658,23 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
 
             {/* ── Central SignalMap Hero Branding Container ── */}
             <div className="relative z-10 flex flex-col items-center max-w-lg px-6 text-center animate-fade-in pointer-events-auto">
-                {/* Precision Aerospace Logo Emblem */}
-                <div className="relative flex items-center justify-center mb-8">
+                {/* Precision Aerospace Logo Holographic Card */}
+                <div className="relative flex items-center justify-center mb-7">
                     {/* Outer Rotating Dashed Gravitational Ring */}
-                    <div className="absolute w-28 h-28 rounded-full border border-dashed border-[#7189FF]/40 animate-[spin_24s_linear_infinite]" />
+                    <div className="absolute w-72 h-72 rounded-full border border-dashed border-[#7189FF]/30 animate-[spin_28s_linear_infinite] pointer-events-none" />
 
                     {/* Counter-Rotating Inner Field Ring */}
-                    <div className="absolute w-24 h-24 rounded-full border border-[#3186FF]/35 animate-[spin_16s_linear_infinite_reverse]" />
+                    <div className="absolute w-60 h-60 rounded-full border border-[#3186FF]/25 animate-[spin_20s_linear_infinite_reverse] pointer-events-none" />
 
                     {/* Concentric Pulsing Radar Blip Wave */}
-                    <span className="absolute w-20 h-20 rounded-full bg-[#7189FF]/20 animate-ping" />
+                    <span className="absolute w-52 h-52 rounded-full bg-[#7189FF]/10 animate-ping pointer-events-none" />
 
-                    {/* Central Glowing Shield / Beacon Container */}
-                    <div className="relative w-16 h-16 rounded-2xl glass-card bg-slate-900/90 border border-[#7189FF]/50 shadow-[0_0_35px_rgba(113,137,255,0.4)] flex items-center justify-center backdrop-blur-xl group">
-                        <svg
-                            className="w-9 h-9 text-[#7189FF] drop-shadow-[0_0_14px_rgba(113,137,255,0.8)]"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <defs>
-                                <linearGradient id="sm-antigravity-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stopColor="#8AB4F8" />
-                                    <stop offset="50%" stopColor="#7189FF" />
-                                    <stop offset="100%" stopColor="#3186FF" />
-                                </linearGradient>
-                            </defs>
-                            {/* Diamond Aerospace Radar Shield */}
-                            <path
-                                d="M12 2L20.5 7V17L12 22L3.5 17V7L12 2Z"
-                                stroke="url(#sm-antigravity-gradient)"
-                                strokeWidth="1.8"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                            {/* Inner Orbital Signal Waves */}
-                            <path
-                                d="M12 6.5L16.5 9.5V14.5L12 17.5L7.5 14.5V9.5L12 6.5Z"
-                                stroke="#00B95C"
-                                strokeWidth="1.2"
-                                strokeOpacity="0.85"
-                            />
-                            {/* Concentric Center Radar Beacon Node */}
-                            <circle cx="12" cy="12" r="2.5" fill="#8AB4F8" className="animate-pulse" />
-                            <circle cx="12" cy="12" r="4.5" stroke="#7189FF" strokeWidth="0.8" strokeDasharray="2 2" />
-                        </svg>
-                    </div>
+                    {/* Central Holographic Keycard Emblem (vgpu.sh holographic card shader effect) */}
+                    <HolographicCardLogo onCardClick={manualDismiss ? handleDismiss : undefined} />
                 </div>
 
                 {/* Brand Typography */}
-                <div className="flex flex-col items-center gap-1.5 mb-7">
+                <div className="flex flex-col items-center gap-1.5 mb-6">
                     <div className="flex items-center gap-2">
                         <h1 className="text-3xl md:text-4xl font-extrabold tracking-[0.22em] font-mono uppercase text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.25)]">
                             SIGNAL<span className="bg-gradient-to-r from-[#7189FF] via-[#8AB4F8] to-[#00B95C] bg-clip-text text-transparent">MAP</span>
@@ -706,7 +688,7 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
                     </p>
                 </div>
 
-                {/* 5-Second Precision Progress Track with Remotion Easing */}
+                {/* Precision Progress Track with Remotion Easing */}
                 <div className="w-64 md:w-80 flex flex-col gap-2.5 mb-5">
                     <div className="relative w-full h-1.5 rounded-full bg-slate-800/80 overflow-hidden border border-slate-700/60 p-[1px]">
                         <div
@@ -720,11 +702,27 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
 
                     <div className="flex items-center justify-between font-mono text-[11px] text-slate-400">
                         <span className="text-[#8AB4F8] font-semibold truncate max-w-[210px] text-left">
-                            {statusSteps[statusIndex]}
+                            {manualDismiss && progress >= 100
+                                ? 'READY // CLICK ANYWHERE TO DISMISS'
+                                : statusSteps[statusIndex]}
                         </span>
                         <span className="font-bold text-slate-200">{progress}%</span>
                     </div>
                 </div>
+
+                {/* Dismiss Button Badge when opened from Settings */}
+                {manualDismiss && (
+                    <div
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleDismiss();
+                        }}
+                        className="mb-4 px-4 py-1.5 rounded-full border border-cyan-500/40 bg-cyan-950/60 hover:bg-cyan-900/80 text-cyan-300 font-mono text-[11px] tracking-widest flex items-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.3)] transition cursor-pointer animate-pulse"
+                    >
+                        <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                        <span>CLICK ANYWHERE TO DISMISS</span>
+                    </div>
+                )}
 
                 {/* Aerospace Telemetry Metadata Footer */}
                 <div className="flex items-center justify-center gap-3 text-[10px] font-mono text-slate-500 border-t border-slate-800/80 pt-3">

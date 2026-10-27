@@ -353,7 +353,7 @@ export function SettingsModal() {
                             type="button"
                             onClick={() => {
                                 setShowSettingsModal(false);
-                                setShowLoadingScreen(true);
+                                setShowLoadingScreen(true, true);
                             }}
                             className="px-2.5 py-1 rounded-lg border text-[11px] font-mono text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/10 flex items-center gap-1.5 transition"
                             title="Replay the SignalMap Antigravity Launch Experience"
