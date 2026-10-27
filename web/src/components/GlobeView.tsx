@@ -337,9 +337,9 @@ export function GlobeView() {
             .pathPoints((d: any) => d)
             .pathPointLat((p: any) => p[1])
             .pathPointLng((p: any) => p[0])
-            .pathPointAlt(0.005)
+            .pathPointAlt(0.003)
             .pathColor(() => currentTheme.borderColor)
-            .pathStroke(currentTheme.borderWidth || 2.0)
+            .pathStroke(currentTheme.borderWidth || 0.6)
             .pathResolution(2)
             .onArcClick((arc: any) => {
                 if (!arc.isDiagnostic && arc.event) {
@@ -484,7 +484,7 @@ export function GlobeView() {
         globeRef.current
             .pathsData(borders)
             .pathColor(() => currentTheme.borderColor)
-            .pathStroke(currentTheme.borderWidth || 2.0);
+            .pathStroke(currentTheme.borderWidth || 0.6);
     }, [borders, currentTheme]);
 
     // Pause the WebGL render loop while the flat projection is shown (after the crossfade)

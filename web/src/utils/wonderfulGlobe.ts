@@ -62,7 +62,14 @@ export function generateWonderfulLandGeometry(radius: number = 100): THREE.Buffe
         const lon = Math.atan2(z, x) * (180 / Math.PI);
 
         if (isWonderfulLand(lat, lon, bitmap)) {
-            positions.push(x * radius, y * radius, z * radius);
+            // ThreeGlobe polar2Cartesian coordinate projection to guarantee 100% alignment with 3D country borders
+            const phi = (90 - lat) * (Math.PI / 180);
+            const lngRad = (90 - lon) * (Math.PI / 180);
+            const phiSin = Math.sin(phi);
+            const px = radius * phiSin * Math.cos(lngRad);
+            const py = radius * Math.cos(phi);
+            const pz = radius * phiSin * Math.sin(lngRad);
+            positions.push(px, py, pz);
             phases.push(o * 2.3999);
         }
     }

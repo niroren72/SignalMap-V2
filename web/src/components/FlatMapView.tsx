@@ -270,10 +270,8 @@ export const FlatMapView = forwardRef<FlatMapHandle, FlatMapViewProps>(function 
     useEffect(() => {
         dataRef.current = { ...dataRef.current, points, rings, origin, theme, themeId };
         baseKeyRef.current = ''; // force base layer redraw on theme change
-        if (themeId !== 'black-dots') {
-            const img = getTexture(theme.textureUrl);
-            if (!img.complete) img.onload = () => (baseKeyRef.current = '');
-        }
+        const img = getTexture(theme.textureUrl);
+        if (!img.complete) img.onload = () => (baseKeyRef.current = '');
     }, [points, rings, origin, theme, themeId]);
 
     // Preload geopolitical country borders
@@ -406,7 +404,7 @@ export const FlatMapView = forwardRef<FlatMapHandle, FlatMapViewProps>(function 
             const { w, h, dpr } = sizeRef.current;
             const { themeId: tid, theme: th } = dataRef.current;
             const style = FLAT_STYLES[tid] ?? FLAT_STYLES['black-dots'];
-            const img = tid !== 'black-dots' ? getTexture(th.textureUrl) : null;
+            const img = getTexture(th.textureUrl);
             const imgReady = !!img && img.complete && img.naturalWidth > 0;
             const v = viewRef.current;
             const borders = getCachedCountryBorders();
@@ -432,7 +430,7 @@ export const FlatMapView = forwardRef<FlatMapHandle, FlatMapViewProps>(function 
                     g.imageSmoothingQuality = 'high';
                     g.drawImage(img, m.ox, m.oy, m.W, m.H);
                 } else {
-                    g.fillStyle = '#0b1a30';
+                    g.fillStyle = '#05070f';
                     g.fillRect(m.ox, m.oy, m.W, m.H);
                 }
                 if (style.tint) {
@@ -440,7 +438,7 @@ export const FlatMapView = forwardRef<FlatMapHandle, FlatMapViewProps>(function 
                     g.fillRect(m.ox, m.oy, m.W, m.H);
                 }
             } else {
-                // Dot-matrix land from the 1-bit 360x180 land bitmap
+                // Dot-matrix land fallback from the 1-bit 360x180 land bitmap
                 const bm = getWonderfulLandBitmap();
                 const cell = m.W / 360;
                 const c0 = Math.max(0, Math.floor(-m.ox / cell));
@@ -464,11 +462,11 @@ export const FlatMapView = forwardRef<FlatMapHandle, FlatMapViewProps>(function 
                 g.fill();
             }
 
-            // Country borders (thick, high-definition geopolitical boundaries)
+            // Country borders (ultra-thin, high-definition geopolitical boundaries)
             if (borders.length > 0) {
                 g.save();
-                g.lineWidth = Math.max(1.8, Math.min(3.4, (th.borderWidth || 2.0) * Math.pow(v.k, 0.12)));
-                g.strokeStyle = th.borderColor || 'rgba(255, 255, 255, 0.75)';
+                g.lineWidth = Math.max(0.65, Math.min(1.4, (th.borderWidth || 0.6) * Math.pow(v.k, 0.08)));
+                g.strokeStyle = th.borderColor || 'rgba(255, 255, 255, 0.42)';
                 g.lineCap = 'round';
                 g.lineJoin = 'round';
 
