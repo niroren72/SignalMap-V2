@@ -28,6 +28,8 @@ export interface GlobeThemeConfig {
     arcColors: (event: any) => [string, string];
     pointColor: (point: any) => string;
     swatches: string[];
+    borderColor: string;
+    borderWidth: number;
     previewSwatches: {
         dots: string;
         atmosphere: string;
@@ -64,6 +66,8 @@ export const GLOBE_THEMES: Record<GlobeThemeId, GlobeThemeConfig> = {
             return '#ffffff';
         },
         swatches: ['#000000', '#ffffff', '#e2e8f0', '#94a3b8'],
+        borderColor: 'rgba(255, 255, 255, 0.75)',
+        borderWidth: 2.0,
         previewSwatches: {
             dots: '#ffffff',
             atmosphere: '#e2e8f0',
@@ -102,6 +106,8 @@ export const GLOBE_THEMES: Record<GlobeThemeId, GlobeThemeConfig> = {
             return '#06b6d4';
         },
         swatches: ['#0b1a30', '#1d4ed8', '#4fc3f7', '#10b981'],
+        borderColor: 'rgba(56, 189, 248, 0.92)',
+        borderWidth: 2.0,
         previewSwatches: {
             dots: '#38bdf8',
             atmosphere: '#4fc3f7',

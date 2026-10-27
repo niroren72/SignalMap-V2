@@ -294,6 +294,13 @@ export function createWonderfulGlobeSystem(radius: number = 100): WonderfulGlobe
     dustPoints.name = 'wonderful-dust-points';
     group.add(dustPoints);
 
+    // Pitch-black occluder sphere to prevent back-hemisphere dots and 3D borders from showing through
+    const occluderGeo = new THREE.SphereGeometry(radius * 0.996, 48, 48);
+    const occluderMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const occluder = new THREE.Mesh(occluderGeo, occluderMat);
+    occluder.name = 'wonderful-occluder-sphere';
+    group.add(occluder);
+
     const hairlineRim = createWonderfulHairlineRim(radius);
     group.add(hairlineRim);
 
@@ -312,6 +319,8 @@ export function createWonderfulGlobeSystem(radius: number = 100): WonderfulGlobe
         landMaterial.dispose();
         dustGeo.dispose();
         dustMaterial.dispose();
+        occluderGeo.dispose();
+        occluderMat.dispose();
         hairlineRim.geometry.dispose();
         (hairlineRim.material as THREE.Material).dispose();
     };

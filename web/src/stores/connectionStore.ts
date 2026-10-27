@@ -56,6 +56,7 @@ export interface ActiveDiagnosticOverlay {
 
 export type ActiveViewType = 'dashboard' | 'globe' | 'graph' | 'table' | 'playback' | 'netutils' | 'modules';
 export type TableHeightMode = 'collapsed' | 'compact' | 'expanded' | 'full';
+export type GlobeProjection = 'globe' | 'flat';
 export type LayoutTheme = 'a' | 'b' | 'c' | 'dark' | 'light'; // 'c'/'dark' = Matte Dark Obsidian, 'b'/'light' = Daylight Clean Light, 'a' = Minimal Plasma
 
 interface ConnectionStore {
@@ -85,6 +86,8 @@ interface ConnectionStore {
     setLayoutTheme: (theme: LayoutTheme) => void;
     globeTheme: GlobeThemeId;
     setGlobeTheme: (theme: GlobeThemeId) => void;
+    globeProjection: GlobeProjection;
+    setGlobeProjection: (projection: GlobeProjection) => void;
 
     // Table Sorting
     tableSortField: 'timestamp' | 'process' | 'protocol' | 'remote_ip' | 'country' | 'category' | 'bytes' | 'severity';
@@ -173,6 +176,13 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
             if (saved === 'black-dots') return 'black-dots';
         }
         return 'black-dots';
+    })(),
+    globeProjection: (() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('signalmap-globe-projection');
+            if (saved === 'flat') return 'flat';
+        }
+        return 'globe';
     })(),
 
     // Table sorting default
@@ -279,6 +289,12 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
             localStorage.setItem('signalmap-globe-theme', globeTheme);
         }
         set({ globeTheme });
+    },
+    setGlobeProjection: (globeProjection) => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('signalmap-globe-projection', globeProjection);
+        }
+        set({ globeProjection });
     },
 
     setTableSort: (field) =>

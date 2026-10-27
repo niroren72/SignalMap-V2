@@ -16,14 +16,23 @@ import {
     Palette,
     Check,
     ChevronDown,
+    Globe as GlobeIcon,
+    Map as MapIcon,
+    LocateFixed,
+    Camera,
 } from 'lucide-react';
 import { GLOBE_THEMES } from '../types/globeTheme';
 import { createWonderfulGlobeSystem, type WonderfulGlobeSystem } from '../utils/wonderfulGlobe';
+import { buildArcLabel } from '../utils/globeLabels';
+import { loadCountryBorders, getCachedCountryBorders, type BorderRing } from '../utils/countryBorders';
+import { FlatMapView, type FlatMapHandle } from './FlatMapView';
+import { GoogleViewModal, type GoogleViewPoint } from './GoogleViewModal';
 
 export function GlobeView() {
     const containerRef = useRef<HTMLDivElement>(null);
     const globeRef = useRef<any>(null);
     const wonderfulSystemRef = useRef<WonderfulGlobeSystem | null>(null);
+    const [borders, setBorders] = useState<BorderRing[]>(() => getCachedCountryBorders());
     const events = useFilteredEvents();
     const setSelectedId = useConnectionStore((s) => s.setSelectedId);
     const diagnosticOverlay = useConnectionStore((s) => s.diagnosticOverlay);
@@ -36,6 +45,11 @@ export function GlobeView() {
     const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
     const [zoom, setZoom] = useState(2.5);
     const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+    const globeProjection = useConnectionStore((s) => s.globeProjection);
+    const setGlobeProjection = useConnectionStore((s) => s.setGlobeProjection);
+    const isFlat = globeProjection === 'flat';
+    const flatRef = useRef<FlatMapHandle>(null);
+    const [selectedGooglePoint, setSelectedGooglePoint] = useState<GoogleViewPoint | null>(null);
 
     const currentTheme = useMemo(
         () => GLOBE_THEMES[globeTheme] || GLOBE_THEMES['black-dots'],
@@ -60,6 +74,13 @@ export function GlobeView() {
                 // Safe fallback to default coordinates if offline
                 setOrigin({ lat: 37.7749, lng: -122.4194 });
             });
+    }, []);
+
+    // Load geopolitical country borders for 3D globe and flat projection
+    useEffect(() => {
+        loadCountryBorders().then((b) => {
+            if (b && b.length > 0) setBorders(b);
+        });
     }, []);
 
     // Filter events that have valid remote geo data
@@ -312,6 +333,14 @@ export function GlobeView() {
             .ringMaxRadius('maxRadius')
             .ringPropagationSpeed('propagationSpeed')
             .ringRepeatPeriod('repeatPeriod')
+            .pathsData(borders)
+            .pathPoints((d: any) => d)
+            .pathPointLat((p: any) => p[1])
+            .pathPointLng((p: any) => p[0])
+            .pathPointAlt(0.005)
+            .pathColor(() => currentTheme.borderColor)
+            .pathStroke(currentTheme.borderWidth || 2.0)
+            .pathResolution(2)
             .onArcClick((arc: any) => {
                 if (!arc.isDiagnostic && arc.event) {
                     setSelectedId(arc.event.id);
@@ -320,49 +349,37 @@ export function GlobeView() {
             .onPointClick((pt: any) => {
                 if (pt.isDiagnostic) {
                     globe.pointOfView({ lat: pt.lat, lng: pt.lng, altitude: 1.2 }, 800);
+                    setSelectedGooglePoint({
+                        lat: pt.lat,
+                        lng: pt.lng,
+                        label: pt.label,
+                        ip: pt.ip,
+                        hostname: pt.hostname,
+                        city: pt.city,
+                        country: pt.country,
+                        org: pt.org,
+                        isPop: pt.isPop,
+                        isDiagnostic: true,
+                        hopNum: pt.hopNum,
+                        avg_ms: pt.avg_ms,
+                    });
                 } else if (pt.events && pt.events.length > 0) {
                     setSelectedId(pt.events[0].id);
+                    setSelectedGooglePoint({
+                        lat: pt.lat,
+                        lng: pt.lng,
+                        city: pt.events[0]?.geo?.city,
+                        country: pt.events[0]?.geo?.country,
+                        ip: pt.events[0]?.remote?.ip,
+                        hostname: pt.events[0]?.remote?.hostname,
+                        org: pt.events[0]?.asn?.org,
+                        hasAnomaly: pt.hasAnomaly,
+                        maxSeverity: pt.maxSeverity,
+                        events: pt.events,
+                    });
                 }
             })
-            .arcLabel((arc: any) => {
-                if (arc.isDiagnostic) {
-                    return `
-          <div class="glass-card p-2.5 text-xs border border-cyan-500/80 shadow-[0_0_15px_rgba(6,182,212,0.3)]" style="min-width: 200px;">
-            <div class="bg-gradient-to-r from-cyan-950/80 to-blue-950/80 text-cyan-300 font-bold px-1.5 py-0.5 rounded text-[10px] mb-1.5 border border-cyan-500/40 flex items-center justify-between font-mono">
-              <span>HOP #${arc.fromHop} &rarr; #${arc.toHop}</span>
-              ${arc.isPop ? '<span class="bg-violet-900/80 text-violet-300 px-1 py-0.2 rounded text-[9px]">PoP / IXP</span>' : ''}
-            </div>
-            <div class="font-bold text-gray-100 mb-0.5">${arc.toLabel || arc.toCity}</div>
-            <div class="text-slate-300 text-[11px]">${arc.toCity}${arc.toCountry ? ', ' + arc.toCountry : ''}</div>
-            ${arc.toOrg ? `<div class="text-slate-400 text-[10px] truncate"><span class="opacity-70">ORG:</span> ${arc.toOrg}</div>` : ''}
-            <div class="text-emerald-400 font-mono font-bold text-xs mt-1 border-t border-slate-700/60 pt-1">
-              RTT: ${arc.latency != null ? arc.latency + ' ms' : 'Timeout'}
-            </div>
-          </div>
-        `;
-                }
-
-                const e = arc.event;
-                const proc = e.local?.process_name || 'System';
-                const isThreat = e.anomaly?.is_anomaly;
-                return `
-          <div class="glass-card p-2.5 text-xs border ${
-              isThreat ? 'border-rose-500/80' : 'border-slate-700'
-          }" style="min-width: 180px;">
-            ${
-                isThreat
-                    ? `<div class="bg-rose-500/20 text-rose-300 font-bold px-1.5 py-0.5 rounded text-[10px] mb-1.5 border border-rose-500/40 flex items-center gap-1 font-mono"><span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>${
-                          e.anomaly.title || 'SECURITY ALERT'
-                      }</div>`
-                    : ''
-            }
-            <div class="font-bold text-gray-200 border-b border-gray-700/60 mb-1 pb-1 font-mono">${proc} <span class="text-slate-500">(PID ${e.local?.pid ?? 'N/A'})</span></div>
-            <div class="font-semibold text-cyan-300 font-mono">${e.remote?.hostname || e.remote?.ip || 'Unknown'}</div>
-            <div class="text-slate-300 text-[11px]">${e.service?.name || 'Unclassified'} &bull; <span class="uppercase text-slate-400 font-mono">${e.protocol}</span></div>
-            <div class="text-slate-400 text-[10px] mt-0.5">${e.geo?.city || 'Transit'}, ${e.geo?.country || 'Global'}</div>
-          </div>
-        `;
-            });
+            .arcLabel((arc: any) => buildArcLabel(arc));
 
         globe.controls().autoRotate = autoRotate;
         globe.controls().autoRotateSpeed = 0.5;
@@ -461,24 +478,56 @@ export function GlobeView() {
         }
     }, [allPoints, allArcs, rings]);
 
+    // Sync country border paths when borders load or theme changes
+    useEffect(() => {
+        if (!globeRef.current || borders.length === 0) return;
+        globeRef.current
+            .pathsData(borders)
+            .pathColor(() => currentTheme.borderColor)
+            .pathStroke(currentTheme.borderWidth || 2.0);
+    }, [borders, currentTheme]);
+
+    // Pause the WebGL render loop while the flat projection is shown (after the crossfade)
+    useEffect(() => {
+        const globe = globeRef.current;
+        if (!globe) return;
+        if (!isFlat) {
+            globe.resumeAnimation?.();
+            return;
+        }
+        const t = window.setTimeout(() => globe.pauseAnimation?.(), 550);
+        return () => window.clearTimeout(t);
+    }, [isFlat]);
+
     // Auto-focus camera when a new diagnostic route is projected
     useEffect(() => {
-        if (!diagnosticOverlay || !globeRef.current) return;
-        if (diagSequentialHops.length > 0) {
-            const midHop = diagSequentialHops[Math.floor(diagSequentialHops.length / 2)];
-            globeRef.current.pointOfView(
-                {
-                    lat: midHop.geo!.lat,
-                    lng: midHop.geo!.lon,
-                    altitude: 2.2,
-                },
-                1200
-            );
+        if (!diagnosticOverlay) return;
+        if (diagSequentialHops.length === 0) return;
+        if (isFlat) {
+            flatRef.current?.fitBounds([
+                origin,
+                ...diagSequentialHops.map((h) => ({ lat: h.geo!.lat!, lng: h.geo!.lon! })),
+            ]);
+            return;
         }
+        if (!globeRef.current) return;
+        const midHop = diagSequentialHops[Math.floor(diagSequentialHops.length / 2)];
+        globeRef.current.pointOfView(
+            {
+                lat: midHop.geo!.lat,
+                lng: midHop.geo!.lon,
+                altitude: 2.2,
+            },
+            1200
+        );
     }, [diagnosticOverlay?.timestamp]);
 
-    // Sync zoom button → globe camera
+    // Sync zoom button → globe camera (or flat map zoom)
     const handleZoom = (delta: number) => {
+        if (isFlat) {
+            flatRef.current?.zoomBy(delta < 0 ? 1.5 : 1 / 1.5);
+            return;
+        }
         if (!globeRef.current) return;
         const pov = globeRef.current.pointOfView();
         const newAlt = Math.max(0.5, Math.min(8, (pov.altitude ?? zoom) + delta));
@@ -486,19 +535,58 @@ export function GlobeView() {
         globeRef.current.pointOfView({ ...pov, altitude: newAlt }, 300);
     };
 
+    const handleResetView = () => {
+        if (isFlat) {
+            flatRef.current?.reset();
+            return;
+        }
+        handleZoom(2.5 - (globeRef.current?.pointOfView()?.altitude ?? 2.5));
+    };
+
     // Smoothly focus on a specific hop
     const flyToHop = (lat: number, lng: number) => {
+        if (isFlat) {
+            flatRef.current?.flyTo(lat, lng, 4);
+            return;
+        }
         if (!globeRef.current) return;
         globeRef.current.pointOfView({ lat, lng, altitude: 1.1 }, 800);
     };
 
     // Reset view to origin (or download.png starlight perspective for Black Dots)
     const flyToOrigin = () => {
+        if (isFlat) {
+            flatRef.current?.flyTo(origin.lat, origin.lng, 2.5);
+            return;
+        }
         if (!globeRef.current) return;
         if (globeTheme === 'black-dots') {
             globeRef.current.pointOfView({ lat: 18, lng: 16, altitude: 2.2 }, 800);
         } else {
             globeRef.current.pointOfView({ lat: origin.lat, lng: origin.lng, altitude: 1.6 }, 800);
+        }
+    };
+
+    // Google View: Zoom in to frame all active connection points and PoPs
+    const handleGoogleViewFitAll = () => {
+        const coords: { lat: number; lng: number }[] = [];
+        if (origin?.lat != null && origin?.lng != null) {
+            coords.push({ lat: origin.lat, lng: origin.lng });
+        }
+        for (const pt of allPoints) {
+            if (pt.lat != null && pt.lng != null) {
+                coords.push({ lat: pt.lat, lng: pt.lng });
+            }
+        }
+        if (coords.length === 0) return;
+
+        if (isFlat) {
+            flatRef.current?.fitAllPointsAndPops(allPoints, origin);
+        } else {
+            // For 3D globe, calculate cluster center and altitude
+            const avgLat = coords.reduce((sum, c) => sum + c.lat, 0) / coords.length;
+            const avgLng = coords.reduce((sum, c) => sum + c.lng, 0) / coords.length;
+            globeRef.current?.pointOfView({ lat: avgLat, lng: avgLng, altitude: 1.8 }, 1000);
         }
     };
 
@@ -522,7 +610,68 @@ export function GlobeView() {
     return (
         <div className="relative w-full h-full">
             {/* Globe canvas */}
-            <div ref={containerRef} className="absolute inset-0 z-0" />
+            <div
+                ref={containerRef}
+                aria-hidden={isFlat}
+                className={`absolute inset-0 z-0 transition-[opacity,transform,filter] duration-500 ease-out ${
+                    isFlat ? 'opacity-0 scale-[0.82] blur-sm pointer-events-none' : 'opacity-100 scale-100 blur-0'
+                }`}
+            />
+
+            {/* Flat (equirectangular) projection */}
+            <div
+                aria-hidden={!isFlat}
+                className={`absolute inset-0 z-0 transition-[opacity,transform,filter] duration-500 ease-out ${
+                    isFlat ? 'opacity-100 scale-100 blur-0' : 'opacity-0 scale-[1.06] blur-sm pointer-events-none'
+                }`}
+            >
+                <FlatMapView
+                    ref={flatRef}
+                    active={isFlat}
+                    themeId={globeTheme}
+                    theme={currentTheme}
+                    points={allPoints}
+                    arcs={allArcs}
+                    rings={rings}
+                    origin={origin}
+                    onArcClick={(arc) => {
+                        if (!arc.isDiagnostic && arc.event) setSelectedId(arc.event.id);
+                    }}
+                    onPointClick={(pt) => {
+                        if (pt.isDiagnostic) {
+                            flatRef.current?.flyTo(pt.lat, pt.lng, 12);
+                            setSelectedGooglePoint({
+                                lat: pt.lat,
+                                lng: pt.lng,
+                                label: pt.label,
+                                ip: pt.ip,
+                                hostname: pt.hostname,
+                                city: pt.city,
+                                country: pt.country,
+                                org: pt.org,
+                                isPop: pt.isPop,
+                                isDiagnostic: true,
+                                hopNum: pt.hopNum,
+                                avg_ms: pt.avg_ms,
+                            });
+                        } else if (pt.events && pt.events.length > 0) {
+                            setSelectedId(pt.events[0].id);
+                            setSelectedGooglePoint({
+                                lat: pt.lat,
+                                lng: pt.lng,
+                                city: pt.events[0]?.geo?.city,
+                                country: pt.events[0]?.geo?.country,
+                                ip: pt.events[0]?.remote?.ip,
+                                hostname: pt.events[0]?.remote?.hostname,
+                                org: pt.events[0]?.asn?.org,
+                                hasAnomaly: pt.hasAnomaly,
+                                maxSeverity: pt.maxSeverity,
+                                events: pt.events,
+                            });
+                        }
+                    }}
+                />
+            </div>
 
             {/* Diagnostic Route Overlay HUD (rendered when traceroute or path is mapped) */}
             {diagnosticOverlay && (
@@ -580,32 +729,95 @@ export function GlobeView() {
                                     <Laptop className="w-3 h-3 text-emerald-400" />
                                     <span>#0 Origin</span>
                                 </button>
+                                <button
+                                    onClick={handleGoogleViewFitAll}
+                                    className="px-2 py-1 rounded-lg bg-cyan-950/80 border border-cyan-500/60 text-cyan-300 text-[10px] font-mono font-bold hover:bg-cyan-800/80 transition flex items-center gap-1.5 shadow-sm"
+                                    title="Google View: Zoom in to frame all PoPs & route hops"
+                                >
+                                    <LocateFixed className="w-3 h-3 text-cyan-400" />
+                                    <span>Fit Route (Google View)</span>
+                                </button>
                                 {diagSequentialHops.map((h) => (
-                                    <button
+                                    <div
                                         key={h.hop}
-                                        onClick={() => flyToHop(h.geo!.lat!, h.geo!.lon!)}
-                                        className={`px-2 py-1 rounded-lg border text-[10px] font-mono transition flex items-center gap-1.5 shadow-sm ${
-                                            h.geo?.is_pop
-                                                ? 'bg-violet-950/70 border-violet-500/50 text-violet-200 hover:bg-violet-800/80'
-                                                : 'bg-slate-900/80 border-slate-700 text-slate-300 hover:border-cyan-500 hover:text-cyan-300'
-                                        }`}
+                                        className="flex items-center rounded-lg border border-slate-700 bg-slate-900/80 shadow-sm overflow-hidden"
                                     >
-                                        {h.geo?.is_pop ? (
-                                            <Link2 className="w-3 h-3 text-violet-400" />
-                                        ) : (
-                                            <MapPin className="w-3 h-3 text-cyan-400" />
-                                        )}
-                                        <span>#{h.hop} {h.geo?.city || h.ip}</span>
-                                        {h.avg_ms != null && (
-                                            <span className="text-slate-500 text-[9px]">({h.avg_ms}ms)</span>
-                                        )}
-                                    </button>
+                                        <button
+                                            onClick={() => flyToHop(h.geo!.lat!, h.geo!.lon!)}
+                                            className={`px-2 py-1 text-[10px] font-mono transition flex items-center gap-1.5 ${
+                                                h.geo?.is_pop
+                                                    ? 'bg-violet-950/70 text-violet-200 hover:bg-violet-800/80'
+                                                    : 'text-slate-300 hover:text-cyan-300 hover:bg-slate-800'
+                                            }`}
+                                        >
+                                            {h.geo?.is_pop ? (
+                                                <Link2 className="w-3 h-3 text-violet-400" />
+                                            ) : (
+                                                <MapPin className="w-3 h-3 text-cyan-400" />
+                                            )}
+                                            <span>#{h.hop} {h.geo?.city || h.ip}</span>
+                                            {h.avg_ms != null && (
+                                                <span className="text-slate-500 text-[9px]">({h.avg_ms}ms)</span>
+                                            )}
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                flyToHop(h.geo!.lat!, h.geo!.lon!);
+                                                setSelectedGooglePoint({
+                                                    lat: h.geo!.lat!,
+                                                    lng: h.geo!.lon!,
+                                                    label: h.hostname || h.ip || `Hop #${h.hop}`,
+                                                    ip: h.ip ?? undefined,
+                                                    hostname: h.hostname ?? undefined,
+                                                    city: h.geo?.city || 'Transit',
+                                                    country: h.geo?.country || '',
+                                                    org: h.geo?.org,
+                                                    isPop: h.geo?.is_pop,
+                                                    isDiagnostic: true,
+                                                    hopNum: h.hop,
+                                                    avg_ms: h.avg_ms,
+                                                    initialMode: 'streetview',
+                                                });
+                                            }}
+                                            className="px-1.5 py-1 text-slate-400 hover:text-cyan-300 hover:bg-cyan-950/60 transition border-l border-slate-700/80"
+                                            title="Open Google Street View for this hop / PoP"
+                                        >
+                                            <Camera className="w-3 h-3 text-cyan-400/80 hover:text-cyan-300" />
+                                        </button>
+                                    </div>
                                 ))}
                             </div>
                         </div>
 
                         {/* Action buttons */}
                         <div className="flex items-center gap-2 pt-1 border-t border-slate-700/50 mt-1">
+                            <button
+                                onClick={() => {
+                                    if (diagSequentialHops.length > 0) {
+                                        const dest = diagSequentialHops[diagSequentialHops.length - 1];
+                                        setSelectedGooglePoint({
+                                            lat: dest.geo!.lat!,
+                                            lng: dest.geo!.lon!,
+                                            label: dest.hostname || dest.ip || `Destination Hop #${dest.hop}`,
+                                            ip: dest.ip ?? undefined,
+                                            hostname: dest.hostname ?? undefined,
+                                            city: dest.geo?.city || 'Transit',
+                                            country: dest.geo?.country || '',
+                                            org: dest.geo?.org,
+                                            isPop: dest.geo?.is_pop,
+                                            isDiagnostic: true,
+                                            hopNum: dest.hop,
+                                            avg_ms: dest.avg_ms,
+                                            initialMode: 'streetview',
+                                        });
+                                    }
+                                }}
+                                className="py-1.5 px-2 rounded-lg bg-emerald-950/70 hover:bg-emerald-900/80 text-emerald-200 text-[11px] font-medium transition flex items-center gap-1 border border-emerald-500/40 shadow-sm"
+                                title="Open Google Street View for destination or PoP"
+                            >
+                                <Camera className="w-3 h-3 text-emerald-400" />
+                                <span>Street View</span>
+                            </button>
                             <button
                                 onClick={() => setActiveView('netutils')}
                                 className="flex-1 py-1.5 px-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-[11px] font-medium transition flex items-center justify-center gap-1.5 border border-slate-700"
@@ -627,7 +839,16 @@ export function GlobeView() {
 
             {/* Quick Diagnostic Launcher on Globe */}
             {!diagnosticOverlay && (
-                <div className="absolute top-4 left-4 z-10">
+                <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
+                    <button
+                        onClick={handleGoogleViewFitAll}
+                        id="flat-globe-google-fit-btn"
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl glass-card border border-cyan-500/40 hover:border-cyan-400 text-cyan-300 hover:text-white text-xs font-mono font-semibold shadow-[0_0_20px_rgba(6,182,212,0.25)] backdrop-blur-xl transition-all group"
+                        title="Google View: Zoom in to all connection points & PoPs"
+                    >
+                        <LocateFixed className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 group-hover:rotate-45 transition-transform" />
+                        <span>Google View: Fit Points & PoPs</span>
+                    </button>
                     <button
                         onClick={() => setActiveView('netutils')}
                         className="flex items-center gap-2 px-3 py-1.5 rounded-xl glass-card border border-cyan-500/30 hover:border-cyan-500/70 text-slate-200 hover:text-cyan-300 text-xs font-mono font-medium shadow-xl backdrop-blur-xl transition-all group"
@@ -639,8 +860,45 @@ export function GlobeView() {
                 </div>
             )}
 
-            {/* Floating Theme Selector HUD */}
-            <div className="absolute top-4 right-4 z-20">
+            {/* Floating Projection Toggle + Theme Selector HUD */}
+            <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+                <div
+                    role="group"
+                    aria-label="Map projection"
+                    className="relative flex items-center p-0.5 rounded-xl glass-card border border-slate-700/80 shadow-xl backdrop-blur-xl"
+                >
+                    <span
+                        aria-hidden
+                        className={`absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded-[10px] bg-cyan-500/15 border border-cyan-500/50 shadow-[0_0_14px_rgba(6,182,212,0.25)] transition-transform duration-300 ease-out ${
+                            isFlat ? 'translate-x-full' : 'translate-x-0'
+                        }`}
+                    />
+                    <button
+                        id="globe-projection-3d"
+                        aria-pressed={!isFlat}
+                        onClick={() => setGlobeProjection('globe')}
+                        title="3D globe projection"
+                        className={`relative z-10 flex items-center justify-center gap-1.5 w-[76px] py-1 rounded-lg text-xs font-mono font-medium transition-colors ${
+                            !isFlat ? 'text-cyan-200' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                    >
+                        <GlobeIcon className="w-3.5 h-3.5" />
+                        <span>3D</span>
+                    </button>
+                    <button
+                        id="globe-projection-flat"
+                        aria-pressed={isFlat}
+                        onClick={() => setGlobeProjection('flat')}
+                        title="Flat map projection"
+                        className={`relative z-10 flex items-center justify-center gap-1.5 w-[76px] py-1 rounded-lg text-xs font-mono font-medium transition-colors ${
+                            isFlat ? 'text-cyan-200' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                    >
+                        <MapIcon className="w-3.5 h-3.5" />
+                        <span>Flat</span>
+                    </button>
+                </div>
+
                 <div className="relative">
                     <button
                         id="globe-theme-menu-btn"
@@ -735,6 +993,38 @@ export function GlobeView() {
             {/* Zoom controls */}
             <div className="absolute bottom-32 right-6 z-10 flex flex-col gap-1.5">
                 <button
+                    id="globe-zoom-fit-all"
+                    onClick={handleGoogleViewFitAll}
+                    title="Google View: Zoom in to all connection points & PoPs"
+                    className="w-8 h-8 rounded-lg glass-card border border-cyan-500/60 bg-cyan-950/40 text-cyan-300 hover:border-cyan-400 hover:text-white hover:bg-cyan-900/60 transition flex items-center justify-center select-none shadow-[0_0_15px_rgba(6,182,212,0.3)] group relative"
+                >
+                    <LocateFixed className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                </button>
+                <button
+                    id="globe-street-view-btn"
+                    onClick={() => {
+                        const target = allPoints.find((p: any) => p.isPop) || allPoints[0] || origin;
+                        setSelectedGooglePoint({
+                            lat: target.lat,
+                            lng: target.lng,
+                            city: target.city || target.events?.[0]?.geo?.city,
+                            country: target.country || target.events?.[0]?.geo?.country,
+                            ip: target.ip || target.events?.[0]?.remote?.ip,
+                            hostname: target.hostname || target.events?.[0]?.remote?.hostname,
+                            org: target.org || target.events?.[0]?.asn?.org,
+                            isPop: target.isPop,
+                            isOrigin: target.isOrigin,
+                            hopNum: target.hopNum,
+                            avg_ms: target.avg_ms,
+                            initialMode: 'streetview',
+                        });
+                    }}
+                    title="Google Street View (Interactive 360° Panorama for Points & PoPs)"
+                    className="w-8 h-8 rounded-lg glass-card border border-emerald-500/60 bg-emerald-950/40 text-emerald-300 hover:border-emerald-400 hover:text-white hover:bg-emerald-900/60 transition flex items-center justify-center select-none shadow-[0_0_15px_rgba(16,185,129,0.3)] group relative"
+                >
+                    <Camera className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                </button>
+                <button
                     id="globe-zoom-in"
                     onClick={() => handleZoom(-0.4)}
                     title="Zoom in"
@@ -752,13 +1042,23 @@ export function GlobeView() {
                 </button>
                 <button
                     id="globe-zoom-reset"
-                    onClick={() => handleZoom(2.5 - (globeRef.current?.pointOfView()?.altitude ?? 2.5))}
+                    onClick={handleResetView}
                     title="Reset perspective"
                     className="w-8 h-8 rounded-lg glass-card border border-slate-700 text-slate-400 hover:border-cyan-500 hover:text-cyan-400 transition flex items-center justify-center select-none shadow-lg"
                 >
                     <Compass className="w-4 h-4" />
                 </button>
             </div>
+
+            {/* Google View Interactive Point & PoP Satellite Inspector Modal */}
+            <GoogleViewModal
+                point={selectedGooglePoint}
+                onClose={() => setSelectedGooglePoint(null)}
+                onZoomDeep={(lat, lng) => {
+                    if (isFlat) flatRef.current?.flyTo(lat, lng, 18);
+                    else globeRef.current?.pointOfView({ lat, lng, altitude: 0.8 }, 800);
+                }}
+            />
         </div>
     );
 }
