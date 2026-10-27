@@ -1,8 +1,12 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import type { GlobeThemeConfig, GlobeThemeId } from '../types/globeTheme';
-import { getWonderfulLandBitmap } from '../utils/wonderfulGlobe';
+import {
+    loadCountryBorders,
+    getCachedCountryBorders,
+    loadFlatLandDots,
+    getCachedFlatLandDots,
+} from '../utils/countryBorders';
 import { buildArcLabel, buildPointLabel } from '../utils/globeLabels';
-import { loadCountryBorders, getCachedCountryBorders } from '../utils/countryBorders';
 
 /**
  * FlatMapView — 2D equirectangular projection of the globe's connection visualization.
@@ -274,9 +278,12 @@ export const FlatMapView = forwardRef<FlatMapHandle, FlatMapViewProps>(function 
         if (!img.complete) img.onload = () => (baseKeyRef.current = '');
     }, [points, rings, origin, theme, themeId]);
 
-    // Preload geopolitical country borders
+    // Preload geopolitical country borders & verified land dots
     useEffect(() => {
         loadCountryBorders().then(() => {
+            baseKeyRef.current = '';
+        });
+        loadFlatLandDots().then(() => {
             baseKeyRef.current = '';
         });
     }, []);
@@ -404,11 +411,12 @@ export const FlatMapView = forwardRef<FlatMapHandle, FlatMapViewProps>(function 
             const { w, h, dpr } = sizeRef.current;
             const { themeId: tid, theme: th } = dataRef.current;
             const style = FLAT_STYLES[tid] ?? FLAT_STYLES['black-dots'];
-            const img = getTexture(th.textureUrl);
+            const img = tid !== 'black-dots' ? getTexture(th.textureUrl) : null;
             const imgReady = !!img && img.complete && img.naturalWidth > 0;
             const v = viewRef.current;
             const borders = getCachedCountryBorders();
-            const key = `${tid}|${w}|${h}|${dpr}|${v.k.toFixed(4)}|${v.cu.toFixed(5)}|${v.cv.toFixed(5)}|${imgReady}|${borders.length}`;
+            const landDots = getCachedFlatLandDots();
+            const key = `${tid}|${w}|${h}|${dpr}|${v.k.toFixed(4)}|${v.cu.toFixed(5)}|${v.cv.toFixed(5)}|${imgReady}|${borders.length}|${landDots.length}`;
             if (key === baseKeyRef.current && baseCanvasRef.current) return baseCanvasRef.current;
 
             let base = baseCanvasRef.current;
@@ -425,7 +433,61 @@ export const FlatMapView = forwardRef<FlatMapHandle, FlatMapViewProps>(function 
             g.clearRect(0, 0, base.width, base.height);
             g.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-            if (img) {
+            if (tid === 'black-dots') {
+                // 1. Deep obsidian space background
+                g.fillStyle = '#05070f';
+                g.fillRect(m.ox, m.oy, m.W, m.H);
+
+                // 2. High-precision starlight land dots strictly contained inside country borders
+                if (landDots.length > 0) {
+                    g.save();
+                    // Exact boundary clipping so no dot edges ever bleed outside country borders
+                    if (borders.length > 0) {
+                        g.beginPath();
+                        for (let r = 0; r < borders.length; r++) {
+                            const ring = borders[r];
+                            if (!ring || ring.length < 2) continue;
+                            let penDown = false;
+                            for (let i = 0; i < ring.length; i++) {
+                                const [lng, lat] = ring[i];
+                                const x = m.ox + ((lng + 180) / 360) * m.W;
+                                const y = m.oy + ((90 - lat) / 180) * m.H;
+                                if (!penDown) {
+                                    g.moveTo(x, y);
+                                    penDown = true;
+                                } else {
+                                    const prevLng = ring[i - 1][0];
+                                    if (Math.abs(lng - prevLng) > 180) {
+                                        g.moveTo(x, y);
+                                    } else {
+                                        g.lineTo(x, y);
+                                    }
+                                }
+                            }
+                        }
+                        g.clip('evenodd');
+                    }
+
+                    // Starlight dot radius: delicate, crisp, antialiased
+                    const dotRad = Math.max(0.65, Math.min(1.8, 0.78 * Math.pow(v.k, 0.12)));
+                    g.fillStyle = style.land || 'rgba(255, 255, 255, 0.42)';
+                    g.beginPath();
+
+                    for (let i = 0; i < landDots.length; i++) {
+                        const [lng, lat] = landDots[i];
+                        const x = m.ox + ((lng + 180) / 360) * m.W;
+                        const y = m.oy + ((90 - lat) / 180) * m.H;
+
+                        // Viewport culling
+                        if (x < -2 || x > w + 2 || y < -2 || y > h + 2) continue;
+
+                        g.moveTo(x + dotRad, y);
+                        g.arc(x, y, dotRad, 0, TAU);
+                    }
+                    g.fill();
+                    g.restore();
+                }
+            } else if (img) {
                 if (imgReady) {
                     g.imageSmoothingQuality = 'high';
                     g.drawImage(img, m.ox, m.oy, m.W, m.H);
@@ -437,29 +499,6 @@ export const FlatMapView = forwardRef<FlatMapHandle, FlatMapViewProps>(function 
                     g.fillStyle = style.tint;
                     g.fillRect(m.ox, m.oy, m.W, m.H);
                 }
-            } else {
-                // Dot-matrix land fallback from the 1-bit 360x180 land bitmap
-                const bm = getWonderfulLandBitmap();
-                const cell = m.W / 360;
-                const c0 = Math.max(0, Math.floor(-m.ox / cell));
-                const c1 = Math.min(359, Math.ceil((w - m.ox) / cell));
-                const r0 = Math.max(0, Math.floor(-m.oy / cell));
-                const r1 = Math.min(179, Math.ceil((h - m.oy) / cell));
-                const rad = Math.max(0.55, Math.min(cell * 0.34, 1 + cell * 0.2));
-                g.fillStyle = style.land;
-                g.beginPath();
-                for (let r = r0; r <= r1; r++) {
-                    const y = m.oy + (r + 0.5) * cell;
-                    for (let c = c0; c <= c1; c++) {
-                        const a = r * 360 + c;
-                        if (((bm[a >> 3] >> (a & 7)) & 1) === 1) {
-                            const x = m.ox + (c + 0.5) * cell;
-                            g.moveTo(x + rad, y);
-                            g.arc(x, y, rad, 0, TAU);
-                        }
-                    }
-                }
-                g.fill();
             }
 
             // Country borders (ultra-thin, high-definition geopolitical boundaries)
