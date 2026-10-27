@@ -48,6 +48,17 @@ export function DetailPanel() {
         };
     }, [event?.remote?.ip]);
 
+    // Close drawer on Escape key press
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setSelectedId(null);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [setSelectedId]);
+
     if (!selectedId || !event) return null;
 
     const copyToClipboard = (text: string) => {
@@ -132,58 +143,65 @@ export function DetailPanel() {
     };
 
     return (
-        <div
-            className="fixed top-0 bottom-0 right-0 z-40 w-96 flex flex-col shadow-2xl animate-slide-in border-l backdrop-blur-xl"
-            style={{
-                backgroundColor: 'var(--color-bg-card)',
-                borderColor: 'var(--color-border)',
-                color: 'var(--color-text-primary)',
-            }}
-        >
-            {/* Header */}
-            <div className="p-4 border-b flex items-start justify-between" style={{ borderColor: 'var(--color-border)' }}>
-                <div className="flex-1 pr-2">
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] uppercase font-mono tracking-wider font-semibold" style={{ color: 'var(--color-text-muted)' }}>
-                            Socket Forensics
-                        </span>
-                        {isThreat && (
-                            <span className="flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/40">
-                                <ShieldAlert className="w-3 h-3" />
-                                Threat
+        <>
+            {/* Backdrop overlay: clicking outside closes the forensics drawer */}
+            <div
+                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs transition-opacity animate-fade-in"
+                onClick={() => setSelectedId(null)}
+                aria-label="Close Inspector Backdrop"
+            />
+            <div
+                className="fixed top-0 bottom-0 right-0 z-50 w-96 max-w-full flex flex-col shadow-2xl animate-slide-in border-l backdrop-blur-xl"
+                style={{
+                    backgroundColor: 'var(--color-bg-card)',
+                    borderColor: 'var(--color-border)',
+                    color: 'var(--color-text-primary)',
+                }}
+            >
+                {/* Header */}
+                <div className="p-4 border-b flex items-start justify-between" style={{ borderColor: 'var(--color-border)' }}>
+                    <div className="flex-1 pr-2">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase font-mono tracking-wider font-semibold" style={{ color: 'var(--color-text-muted)' }}>
+                                Socket Forensics
                             </span>
-                        )}
-                    </div>
-                    <h3 className="text-base font-bold font-mono truncate mt-0.5" title={event.remote?.hostname || event.remote?.ip || undefined}>
-                        {event.remote?.hostname || event.remote?.ip || 'Unknown Endpoint'}
-                    </h3>
-                    <div className="flex items-center gap-1.5 mt-2 flex-wrap text-xs">
-                        <span className="px-2 py-0.5 rounded font-mono uppercase font-bold text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
-                            {event.protocol}
-                        </span>
-                        <span className="px-2 py-0.5 rounded font-mono uppercase font-semibold text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/30">
-                            {(event.direction || 'OUTBOUND').toUpperCase()}
-                        </span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono" style={{ backgroundColor: 'var(--color-bg-tertiary)', color: 'var(--color-text-secondary)' }}>
-                            Port {event.remote?.port || 'N/A'}
-                        </span>
-                        {isBlocked && (
-                            <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-rose-950 border border-rose-500/60 text-rose-300 text-[10px] font-mono font-bold">
-                                <ShieldAlert className="w-3 h-3" />
-                                BLOCKED
+                            {isThreat && (
+                                <span className="flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/40">
+                                    <ShieldAlert className="w-3 h-3" />
+                                    Threat
+                                </span>
+                            )}
+                        </div>
+                        <h3 className="text-base font-bold font-mono truncate mt-0.5" title={event.remote?.hostname || event.remote?.ip || undefined}>
+                            {event.remote?.hostname || event.remote?.ip || 'Unknown Endpoint'}
+                        </h3>
+                        <div className="flex items-center gap-1.5 mt-2 flex-wrap text-xs">
+                            <span className="px-2 py-0.5 rounded font-mono uppercase font-bold text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                                {event.protocol}
                             </span>
-                        )}
+                            <span className="px-2 py-0.5 rounded font-mono uppercase font-semibold text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                                {(event.direction || 'OUTBOUND').toUpperCase()}
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono" style={{ backgroundColor: 'var(--color-bg-tertiary)', color: 'var(--color-text-secondary)' }}>
+                                Port {event.remote?.port || 'N/A'}
+                            </span>
+                            {isBlocked && (
+                                <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-rose-950 border border-rose-500/60 text-rose-300 text-[10px] font-mono font-bold">
+                                    <ShieldAlert className="w-3 h-3" />
+                                    BLOCKED
+                                </span>
+                            )}
+                        </div>
                     </div>
+                    <button
+                        onClick={() => setSelectedId(null)}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/80 hover:bg-rose-950/40 hover:border-rose-500/50 hover:text-rose-300 text-slate-300 transition shadow-sm"
+                        title="Close Forensics Drawer (Esc)"
+                        aria-label="Close Forensics Drawer"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
                 </div>
-                <button
-                    onClick={() => setSelectedId(null)}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg opacity-60 hover:opacity-100 transition"
-                    style={{ backgroundColor: 'var(--color-bg-secondary)' }}
-                    title="Close Forensics Drawer"
-                >
-                    <X className="w-4 h-4" />
-                </button>
-            </div>
 
             {/* Notification Banner */}
             {actionMessage && (
@@ -259,11 +277,18 @@ export function DetailPanel() {
                         <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--color-text-muted)' }}>
                             Local Process
                         </span>
-                        {event.local?.pid != null && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded font-mono" style={{ backgroundColor: 'var(--color-bg-tertiary)', color: 'var(--color-text-secondary)' }}>
-                                PID {event.local.pid}
-                            </span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                            {event.local?.pid != null && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded font-mono" style={{ backgroundColor: 'var(--color-bg-tertiary)', color: 'var(--color-text-secondary)' }}>
+                                    PID {event.local.pid}
+                                </span>
+                            )}
+                            {event.local?.user && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-sky-950/70 text-sky-300 border border-sky-600/40" title="Executing User Account">
+                                    user: {event.local.user}
+                                </span>
+                            )}
+                        </div>
                     </div>
                     <div className="font-mono text-xs flex items-center justify-between">
                         <span className="flex items-center gap-1.5 font-bold" style={{ color: 'var(--color-text-primary)' }}>
@@ -511,8 +536,16 @@ export function DetailPanel() {
                         <Globe className="w-3.5 h-3.5" />
                         <span>Traceroute</span>
                     </button>
+                    <button
+                        onClick={() => setSelectedId(null)}
+                        className="w-full mt-2 py-1.5 rounded-lg border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-mono font-medium flex items-center justify-center gap-1.5 transition"
+                    >
+                        <X className="w-3.5 h-3.5" />
+                        <span>Close Inspector (Esc)</span>
+                    </button>
                 </div>
             )}
         </div>
+        </>
     );
 }

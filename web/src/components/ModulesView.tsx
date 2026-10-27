@@ -12,6 +12,7 @@ import {
     Globe,
     Table,
     Download,
+    Database,
 } from 'lucide-react';
 
 function getModuleIcon(id: string) {
@@ -631,6 +632,78 @@ export function ModulesView() {
                     <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
                         {selectedMod.description}
                     </p>
+
+                    {/* Data Sources In Use */}
+                    <div className="flex flex-col gap-2 pt-2 border-t" style={{ borderColor: 'var(--color-border)' }}>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-mono uppercase font-semibold tracking-wider flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                                <Database className="w-3 h-3 text-cyan-400" />
+                                Data Sources ({selectedMod.dataSources?.length || 0})
+                            </span>
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cyan-950/40 text-cyan-400 border border-cyan-800/40">
+                                Ingest Stream
+                            </span>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            {(selectedMod.dataSources || []).map((ds) => {
+                                const isDsActive = ds.status === 'active';
+                                const isDsConnected = ds.status === 'connected';
+                                return (
+                                    <div
+                                        key={ds.id}
+                                        className="p-2.5 rounded-lg border flex flex-col gap-1.5 transition-all hover:border-slate-600/60"
+                                        style={{
+                                            backgroundColor: 'var(--color-bg-secondary)',
+                                            borderColor: 'var(--color-border)',
+                                        }}
+                                    >
+                                        <div className="flex items-start justify-between gap-1.5">
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="text-[11px] font-mono font-bold truncate text-slate-100" title={ds.name}>
+                                                    {ds.name}
+                                                </span>
+                                                <span className="text-[9.5px] font-mono text-cyan-400/90 truncate">
+                                                    {ds.type} {ds.protocol ? `· ${ds.protocol}` : ''}
+                                                </span>
+                                            </div>
+                                            <span
+                                                className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full border shrink-0 font-semibold uppercase flex items-center gap-1 ${
+                                                    isDsActive
+                                                        ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                                                        : isDsConnected
+                                                        ? 'bg-sky-500/15 border-sky-500/30 text-sky-300'
+                                                        : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                                                }`}
+                                            >
+                                                <span
+                                                    className={`w-1.5 h-1.5 rounded-full ${
+                                                        isDsActive
+                                                            ? 'bg-emerald-400 animate-pulse'
+                                                            : isDsConnected
+                                                            ? 'bg-sky-400'
+                                                            : 'bg-amber-400'
+                                                    }`}
+                                                />
+                                                {ds.status}
+                                            </span>
+                                        </div>
+
+                                        <p className="text-[10.5px] leading-relaxed font-sans" style={{ color: 'var(--color-text-secondary)' }}>
+                                            {ds.description}
+                                        </p>
+
+                                        {ds.frequency && (
+                                            <div className="flex items-center justify-between text-[9px] font-mono pt-1 border-t" style={{ borderColor: 'var(--color-border-hairline)', color: 'var(--color-text-muted)' }}>
+                                                <span>Cadence:</span>
+                                                <span className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{ds.frequency}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
 
                     {/* Configuration Toggles */}
                     <div className="flex flex-col gap-2.5 pt-2 border-t" style={{ borderColor: 'var(--color-border)' }}>

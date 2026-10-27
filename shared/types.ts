@@ -41,6 +41,7 @@ export interface HttpMeta {
 export interface LocalEndpoint {
   pid?: number | null;
   process_name?: string | null;
+  user?: string | null;
   host?: string | null;
   port?: number | null;
 }

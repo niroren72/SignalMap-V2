@@ -4,7 +4,7 @@ import { useConnectionStore } from '../stores/connectionStore';
 const DEFAULT_MOCK_COMPONENTS = [
     {
         id: 'comp-1',
-        local: { process_name: 'Antigravity.exe', pid: 8476 },
+        local: { process_name: 'Antigravity.exe', pid: 8476, user: 'User' },
         service: { category: 'TELEMETRY' },
         remote: { hostname: 'localhost', port: 63558 },
         asn: { org: 'localhost' },
@@ -14,7 +14,7 @@ const DEFAULT_MOCK_COMPONENTS = [
     },
     {
         id: 'comp-2',
-        local: { process_name: 'opera.exe', pid: 2456 },
+        local: { process_name: 'opera.exe', pid: 2456, user: 'User' },
         service: { category: 'TELEMETRY' },
         remote: { hostname: 'local_network', port: 8009 },
         asn: { org: 'local_network' },
@@ -24,7 +24,7 @@ const DEFAULT_MOCK_COMPONENTS = [
     },
     {
         id: 'comp-3',
-        local: { process_name: 'language_server_windows_x64.exe', pid: 14380 },
+        local: { process_name: 'language_server_windows_x64.exe', pid: 14380, user: 'User' },
         service: { category: 'TELEMETRY' },
         remote: { hostname: 'Google LLC', port: 443 },
         asn: { org: 'Google LLC' },
@@ -34,7 +34,7 @@ const DEFAULT_MOCK_COMPONENTS = [
     },
     {
         id: 'comp-4',
-        local: { process_name: 'language_server_windows_x64.exe', pid: 14380 },
+        local: { process_name: 'language_server_windows_x64.exe', pid: 14380, user: 'User' },
         service: { category: 'TELEMETRY' },
         remote: { hostname: 'localhost', port: 50955 },
         asn: { org: 'localhost' },
@@ -44,7 +44,7 @@ const DEFAULT_MOCK_COMPONENTS = [
     },
     {
         id: 'comp-5',
-        local: { process_name: 'M365Copilot.exe', pid: 16972 },
+        local: { process_name: 'M365Copilot.exe', pid: 16972, user: 'Administrator' },
         service: { category: 'TELEMETRY' },
         remote: { hostname: 'Microsoft Corporation', port: 443 },
         asn: { org: 'Microsoft Corporation' },
@@ -54,7 +54,7 @@ const DEFAULT_MOCK_COMPONENTS = [
     },
     {
         id: 'comp-6',
-        local: { process_name: 'language_server_windows_x64.exe', pid: 3952 },
+        local: { process_name: 'language_server_windows_x64.exe', pid: 3952, user: 'User' },
         service: { category: 'TELEMETRY' },
         remote: { hostname: 'localhost', port: 54153 },
         asn: { org: 'localhost' },
@@ -64,7 +64,7 @@ const DEFAULT_MOCK_COMPONENTS = [
     },
     {
         id: 'comp-7',
-        local: { process_name: 'Antigravity IDE.exe', pid: 7184 },
+        local: { process_name: 'Antigravity IDE.exe', pid: 7184, user: 'User' },
         service: { category: 'TELEMETRY' },
         remote: { hostname: 'localhost', port: 63645 },
         asn: { org: 'localhost' },
@@ -74,7 +74,7 @@ const DEFAULT_MOCK_COMPONENTS = [
     },
     {
         id: 'comp-8',
-        local: { process_name: 'node.exe', pid: 11024 },
+        local: { process_name: 'node.exe', pid: 11024, user: 'SYSTEM' },
         service: { category: 'TELEMETRY' },
         remote: { hostname: 'localhost', port: 5173 },
         asn: { org: 'localhost' },
@@ -84,7 +84,7 @@ const DEFAULT_MOCK_COMPONENTS = [
     },
     {
         id: 'comp-9',
-        local: { process_name: 'python.exe', pid: 9364 },
+        local: { process_name: 'python.exe', pid: 9364, user: 'User' },
         service: { category: 'TELEMETRY' },
         remote: { hostname: 'localhost', port: 8765 },
         asn: { org: 'localhost' },
@@ -94,7 +94,7 @@ const DEFAULT_MOCK_COMPONENTS = [
     },
     {
         id: 'comp-10',
-        local: { process_name: 'chrome.exe', pid: 14016 },
+        local: { process_name: 'chrome.exe', pid: 14016, user: 'User' },
         service: { category: 'TELEMETRY' },
         remote: { hostname: 'Amazon.com, Inc.', port: 443 },
         asn: { org: 'Amazon.com, Inc.' },
@@ -104,7 +104,7 @@ const DEFAULT_MOCK_COMPONENTS = [
     },
     {
         id: 'comp-11',
-        local: { process_name: 'Code.exe', pid: 18240 },
+        local: { process_name: 'Code.exe', pid: 18240, user: 'User' },
         service: { category: 'TELEMETRY' },
         remote: { hostname: 'Microsoft Corporation', port: 443 },
         asn: { org: 'Microsoft Corporation' },
@@ -114,7 +114,7 @@ const DEFAULT_MOCK_COMPONENTS = [
     },
     {
         id: 'comp-12',
-        local: { process_name: 'svchost.exe', pid: 1120 },
+        local: { process_name: 'svchost.exe', pid: 1120, user: 'LOCAL SERVICE' },
         service: { category: 'TELEMETRY' },
         remote: { hostname: 'local_network', port: 5353 },
         asn: { org: 'local_network' },
@@ -712,7 +712,14 @@ export function DashboardView() {
                                                         <div className="font-medium text-slate-200 group-hover:text-emerald-300 font-mono text-[11px] transition-colors leading-tight">
                                                             {procName}
                                                         </div>
-                                                        <div className="text-[9.5px] text-slate-500 font-mono">{pid}</div>
+                                                        <div className="flex items-center gap-1.5 text-[9.5px] font-mono text-slate-500">
+                                                            <span>{pid}</span>
+                                                            {(e.local as any)?.user && (
+                                                                <span className="text-cyan-400 font-medium bg-cyan-950/60 px-1 py-0.2 rounded border border-cyan-800/40">
+                                                                    {(e.local as any).user}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>

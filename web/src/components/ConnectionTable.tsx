@@ -43,6 +43,7 @@ export function ConnectionTable() {
                 const q = searchQuery.toLowerCase();
                 const matchGlobal =
                     e.local?.process_name?.toLowerCase().includes(q) ||
+                    e.local?.user?.toLowerCase().includes(q) ||
                     e.remote?.ip?.toLowerCase().includes(q) ||
                     e.remote?.hostname?.toLowerCase().includes(q) ||
                     e.service?.name?.toLowerCase().includes(q) ||
@@ -57,6 +58,7 @@ export function ConnectionTable() {
                 const tq = tableSearch.toLowerCase();
                 const matchTable =
                     e.local?.process_name?.toLowerCase().includes(tq) ||
+                    e.local?.user?.toLowerCase().includes(tq) ||
                     e.remote?.ip?.toLowerCase().includes(tq) ||
                     e.remote?.hostname?.toLowerCase().includes(tq) ||
                     e.service?.name?.toLowerCase().includes(tq) ||
@@ -87,8 +89,8 @@ export function ConnectionTable() {
                     return (ta - tb) * dir;
                 }
                 case 'process': {
-                    const pa = a.local?.process_name || '';
-                    const pb = b.local?.process_name || '';
+                    const pa = (a.local?.process_name || '') + (a.local?.user || '');
+                    const pb = (b.local?.process_name || '') + (b.local?.user || '');
                     return pa.localeCompare(pb) * dir;
                 }
                 case 'protocol': {
@@ -264,7 +266,7 @@ export function ConnectionTable() {
                                 className="px-3.5 py-2.5 cursor-pointer hover:text-cyan-400 transition whitespace-nowrap"
                             >
                                 <span className="inline-flex items-center gap-1">
-                                    PROCESS / PID
+                                    PROCESS / PID / USER
                                     {tableSortField === 'process' && (tableSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                                 </span>
                             </th>
@@ -349,7 +351,7 @@ export function ConnectionTable() {
                                             key={virtualRow.key}
                                             data-index={virtualRow.index}
                                             ref={rowVirtualizer.measureElement}
-                                            onClick={() => setSelectedId(eventId || null)}
+                                            onClick={() => setSelectedId(selectedId === eventId ? null : (eventId || null))}
                                             className={`cursor-pointer transition-colors ${
                                                 isSelected
                                                     ? 'bg-cyan-950/70 border-l-2 border-cyan-400'
@@ -386,15 +388,24 @@ export function ConnectionTable() {
                                             {formatTime(e.metrics?.last_seen || e.metrics?.first_seen)}
                                         </td>
 
-                                        {/* Process / PID */}
+                                        {/* Process / PID / User */}
                                         <td className="px-3.5 py-2.5 whitespace-nowrap">
-                                            <div className="flex items-center gap-1.5">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
                                                 <span className="font-semibold text-slate-200">
                                                     {e.local?.process_name || 'System / Kernel'}
                                                 </span>
-                                                {e.local?.pid && (
+                                                {e.local?.pid != null && (
                                                     <span className="text-[10px] font-mono text-slate-500">
                                                         ({e.local.pid})
+                                                    </span>
+                                                )}
+                                                {e.local?.user && (
+                                                    <span
+                                                        className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-950/70 text-sky-300 border border-sky-600/40"
+                                                        title={`Executing User: ${e.local.user}`}
+                                                    >
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+                                                        {e.local.user}
                                                     </span>
                                                 )}
                                             </div>
@@ -499,11 +510,15 @@ export function ConnectionTable() {
                                             <button
                                                 onClick={(ev) => {
                                                     ev.stopPropagation();
-                                                    setSelectedId(eventId || null);
+                                                    setSelectedId(selectedId === eventId ? null : (eventId || null));
                                                 }}
-                                                className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-cyan-600 text-slate-300 hover:text-white text-[11px] font-semibold transition shadow-sm"
+                                                className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition shadow-sm ${
+                                                    selectedId === eventId
+                                                        ? 'bg-cyan-500 text-white font-bold ring-2 ring-cyan-400/50'
+                                                        : 'bg-slate-800 hover:bg-cyan-600 text-slate-300 hover:text-white'
+                                                }`}
                                             >
-                                                Inspect
+                                                {selectedId === eventId ? 'Close' : 'Inspect'}
                                             </button>
                                         </td>
                                     </tr>

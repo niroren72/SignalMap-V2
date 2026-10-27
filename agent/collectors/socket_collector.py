@@ -4,7 +4,7 @@ import socket
 import subprocess
 import os
 import re
-from typing import AsyncIterator, Dict, List
+from typing import AsyncIterator, Dict, List, Optional
 from collections import namedtuple
 
 from .base import BaseCollector
@@ -27,6 +27,8 @@ class PsutilSocketCollector(BaseCollector):
         self._active_connections: Dict[str, ConnectionEvent] = {}
         # Simple cache for pid -> Process Name to reduce overhead
         self._pid_cache: Dict[int, str] = {}
+        # Simple cache for pid -> Username to reduce overhead
+        self._user_cache: Dict[int, Optional[str]] = {}
         # Per-PID IO counters cache: pid -> (read_bytes, write_bytes)
         self._pid_io_cache: Dict[int, tuple[int, int]] = {}
         self._last_io = None
@@ -47,6 +49,21 @@ class PsutilSocketCollector(BaseCollector):
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             self._pid_cache[pid] = "unknown"
             return "unknown"
+
+    def _get_process_user(self, pid: int) -> Optional[str]:
+        if pid is None:
+            return None
+        if pid in self._user_cache:
+            return self._user_cache[pid]
+        try:
+            username = psutil.Process(pid).username()
+            if username and "\\" in username:
+                username = username.split("\\", 1)[1]
+            self._user_cache[pid] = username
+            return username
+        except (psutil.NoSuchProcess, psutil.AccessDenied, Exception):
+            self._user_cache[pid] = None
+            return None
 
     def _conn_signature(self, conn) -> str:
         """Create a unique key for the connection."""
@@ -194,6 +211,7 @@ class PsutilSocketCollector(BaseCollector):
                     local=LocalEndpoint(
                         pid=conn.pid,
                         process_name=process_name,
+                        user=self._get_process_user(conn.pid),
                         host=conn.laddr.ip if conn.laddr else None,
                         port=conn.laddr.port if conn.laddr else None,
                     ),

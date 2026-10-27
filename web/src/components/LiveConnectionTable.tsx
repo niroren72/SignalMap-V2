@@ -31,6 +31,7 @@ export function LiveConnectionTable() {
                 const q = searchQuery.toLowerCase();
                 const matchGlobal =
                     e.local?.process_name?.toLowerCase().includes(q) ||
+                    e.local?.user?.toLowerCase().includes(q) ||
                     e.remote?.ip?.toLowerCase().includes(q) ||
                     e.remote?.hostname?.toLowerCase().includes(q) ||
                     e.service?.name?.toLowerCase().includes(q) ||
@@ -43,6 +44,7 @@ export function LiveConnectionTable() {
                 const tq = tableSearch.toLowerCase();
                 const matchTable =
                     e.local?.process_name?.toLowerCase().includes(tq) ||
+                    e.local?.user?.toLowerCase().includes(tq) ||
                     e.remote?.ip?.toLowerCase().includes(tq) ||
                     e.remote?.hostname?.toLowerCase().includes(tq) ||
                     e.service?.name?.toLowerCase().includes(tq) ||
@@ -69,8 +71,8 @@ export function LiveConnectionTable() {
                     return (ta - tb) * dir;
                 }
                 case 'process': {
-                    const pa = a.local?.process_name || '';
-                    const pb = b.local?.process_name || '';
+                    const pa = (a.local?.process_name || '') + (a.local?.user || '');
+                    const pb = (b.local?.process_name || '') + (b.local?.user || '');
                     return pa.localeCompare(pb) * dir;
                 }
                 case 'protocol': {
@@ -279,7 +281,7 @@ export function LiveConnectionTable() {
                                 </th>
                                 <th onClick={() => setTableSort('process')} className="px-3 py-2 cursor-pointer hover:opacity-80">
                                     <span className="inline-flex items-center gap-1">
-                                        Process / PID
+                                        Process / PID / User
                                         {tableSortField === 'process' && (tableSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                                     </span>
                                 </th>
@@ -329,7 +331,7 @@ export function LiveConnectionTable() {
                                     return (
                                         <tr
                                             key={eventId || `live-conn-${idx}`}
-                                            onClick={() => setSelectedId(eventId || null)}
+                                            onClick={() => setSelectedId(selectedId === eventId ? null : (eventId || null))}
                                             className="cursor-pointer transition-colors hover:opacity-90"
                                             style={{
                                                 backgroundColor: isSelected
@@ -369,14 +371,30 @@ export function LiveConnectionTable() {
                                                 {formatTime(e.metrics?.last_seen || e.metrics?.first_seen)}
                                             </td>
                                             <td className="px-3 py-1.5 whitespace-nowrap">
-                                                <span className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                                                    {e.local?.process_name || 'System'}
-                                                </span>
-                                                {e.local?.pid && (
-                                                    <span className="text-[10px] ml-1 opacity-60">
-                                                        ({e.local.pid})
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                                                        {e.local?.process_name || 'System'}
                                                     </span>
-                                                )}
+                                                    {e.local?.pid != null && (
+                                                        <span className="text-[10px] opacity-60 font-mono">
+                                                            ({e.local.pid})
+                                                        </span>
+                                                    )}
+                                                    {e.local?.user && (
+                                                        <span
+                                                            className="inline-flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.2 rounded"
+                                                            style={{
+                                                                backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                                                                color: '#38bdf8',
+                                                                border: '1px solid rgba(56, 189, 248, 0.25)',
+                                                            }}
+                                                            title={`Executing User: ${e.local.user}`}
+                                                        >
+                                                            <span className="w-1 h-1 rounded-full bg-sky-400" />
+                                                            {e.local.user}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-3 py-1.5 whitespace-nowrap uppercase font-bold" style={{ color: 'var(--color-text-secondary)' }}>
                                                 {e.protocol || 'TCP'}
@@ -414,16 +432,16 @@ export function LiveConnectionTable() {
                                                 <button
                                                     onClick={(ev) => {
                                                         ev.stopPropagation();
-                                                        setSelectedId(eventId || null);
+                                                        setSelectedId(selectedId === eventId ? null : (eventId || null));
                                                     }}
                                                     className="px-2 py-0.5 rounded border text-[10px] font-semibold transition hover:opacity-80"
                                                     style={{
-                                                        backgroundColor: 'var(--color-bg-secondary)',
-                                                        borderColor: 'var(--color-border)',
-                                                        color: 'var(--color-text-primary)',
+                                                        backgroundColor: selectedId === eventId ? 'var(--color-accent)' : 'var(--color-bg-secondary)',
+                                                        borderColor: selectedId === eventId ? 'var(--color-accent)' : 'var(--color-border)',
+                                                        color: selectedId === eventId ? '#ffffff' : 'var(--color-text-primary)',
                                                     }}
                                                 >
-                                                    Inspect
+                                                    {selectedId === eventId ? 'Close' : 'Inspect'}
                                                 </button>
                                             </td>
                                         </tr>

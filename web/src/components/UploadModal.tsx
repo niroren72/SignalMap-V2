@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { useConnectionStore } from '../stores/connectionStore';
 import { UploadCloud, X, AlertTriangle, FileCode, CheckCircle2 } from 'lucide-react';
 
@@ -78,6 +78,15 @@ export function UploadModal({ onClose }: UploadModalProps) {
         const file = e.target.files?.[0];
         if (file) handleFile(file);
     };
+
+    // Close on Escape key press
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
 
     return (
         <div

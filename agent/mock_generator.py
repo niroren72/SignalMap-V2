@@ -110,6 +110,7 @@ def _generate_mock_event() -> ConnectionEvent:
         local=LocalEndpoint(
             pid=proc[0],
             process_name=proc[1],
+            user=random.choice(["Administrator", "SYSTEM", "sec_analyst", "svc_app", "corp_user"]),
             host="127.0.0.1",
             port=random.randint(49152, 65535),
         ),

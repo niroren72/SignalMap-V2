@@ -54,6 +54,15 @@ export function GoogleViewModal({ point, onClose, onZoomDeep }: GoogleViewModalP
         setReloadKey((k) => k + 1);
     }, [point?.lat, point?.lng, point?.initialMode]);
 
+    // Close on Escape key press
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
     if (!point || point.lat == null || point.lng == null) return null;
 
     const lat = point.lat;
@@ -81,7 +90,12 @@ export function GoogleViewModal({ point, onClose, onZoomDeep }: GoogleViewModalP
     const locationText = [point.city, point.country].filter(Boolean).join(', ') || 'Global Transit';
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-md animate-fade-in">
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-fade-in"
+            onClick={(e) => {
+                if (e.target === e.currentTarget) onClose();
+            }}
+        >
             <div
                 className="relative w-full max-w-3xl overflow-hidden glass-card rounded-2xl border border-cyan-500/50 shadow-[0_0_60px_rgba(6,182,212,0.3)] flex flex-col max-h-[94vh]"
                 style={{ backgroundColor: 'rgba(10, 15, 29, 0.96)' }}
@@ -280,6 +294,13 @@ export function GoogleViewModal({ point, onClose, onZoomDeep }: GoogleViewModalP
                             <span>Open in Google Maps</span>
                             <ExternalLink className="w-3.5 h-3.5" />
                         </a>
+
+                        <button
+                            onClick={onClose}
+                            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-mono font-semibold border border-slate-700 transition"
+                        >
+                            Close
+                        </button>
                     </div>
                 </div>
             </div>

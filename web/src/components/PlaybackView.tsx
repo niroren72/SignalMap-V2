@@ -417,7 +417,7 @@ export function PlaybackView() {
                                     return (
                                         <tr
                                             key={eventId}
-                                            onClick={() => setSelectedId(eventId || null)}
+                                            onClick={() => setSelectedId(selectedId === eventId ? null : (eventId || null))}
                                             className={`cursor-pointer transition-colors ${
                                                 isSelected
                                                     ? 'bg-cyan-950/60 border-l-2 border-cyan-400'
@@ -440,8 +440,22 @@ export function PlaybackView() {
                                             <td className="px-3 py-2 whitespace-nowrap text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
                                                 {e.metrics?.last_seen ? formatTime(new Date(e.metrics.last_seen).getTime()) : '-'}
                                             </td>
-                                            <td className="px-3 py-2 whitespace-nowrap font-sans font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                                                {e.local?.process_name || 'System'}
+                                            <td className="px-3 py-2 whitespace-nowrap">
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="font-sans font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                                                        {e.local?.process_name || 'System'}
+                                                    </span>
+                                                    {e.local?.pid != null && (
+                                                        <span className="text-[10px] font-mono opacity-60">
+                                                            ({e.local.pid})
+                                                        </span>
+                                                    )}
+                                                    {e.local?.user && (
+                                                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-sky-950/60 text-sky-300 border border-sky-800/40">
+                                                            {e.local.user}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-3 py-2 whitespace-nowrap font-mono uppercase text-[11px]" style={{ color: 'var(--color-accent-text)' }}>
                                                 {e.protocol || 'TCP'}
@@ -465,16 +479,16 @@ export function PlaybackView() {
                                                 <button
                                                     onClick={(ev) => {
                                                         ev.stopPropagation();
-                                                        setSelectedId(eventId || null);
+                                                        setSelectedId(selectedId === eventId ? null : (eventId || null));
                                                     }}
                                                     className="px-2 py-0.5 rounded text-[11px] font-semibold border transition"
                                                     style={{
-                                                        backgroundColor: 'var(--color-bg-secondary)',
-                                                        borderColor: 'var(--color-border)',
-                                                        color: 'var(--color-text-secondary)',
+                                                        backgroundColor: selectedId === eventId ? 'var(--color-accent)' : 'var(--color-bg-secondary)',
+                                                        borderColor: selectedId === eventId ? 'var(--color-accent)' : 'var(--color-border)',
+                                                        color: selectedId === eventId ? '#ffffff' : 'var(--color-text-secondary)',
                                                     }}
                                                 >
-                                                    Inspect
+                                                    {selectedId === eventId ? 'Close' : 'Inspect'}
                                                 </button>
                                             </td>
                                         </tr>

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useConnectionStore } from '../stores/connectionStore';
 import {
     Settings,
@@ -27,6 +28,16 @@ export function SettingsModal() {
         setShowLoadingScreen,
     } = useConnectionStore();
 
+    // Close on Escape key press
+    useEffect(() => {
+        if (!showSettingsModal) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setShowSettingsModal(false);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [showSettingsModal, setShowSettingsModal]);
+
     if (!showSettingsModal) return null;
 
     const handleClearEvents = () => {
@@ -36,7 +47,12 @@ export function SettingsModal() {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md animate-fade-in p-4">
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md animate-fade-in p-4"
+            onClick={(e) => {
+                if (e.target === e.currentTarget) setShowSettingsModal(false);
+            }}
+        >
             <div
                 className="relative w-full max-w-2xl glass-card border shadow-2xl p-6 flex flex-col gap-6 max-h-[90vh] overflow-y-auto animate-modal-in"
                 style={{

@@ -69,6 +69,7 @@ class Severity(str, Enum):
 class LocalEndpoint(BaseModel):
     pid: Optional[int] = None
     process_name: Optional[str] = None
+    user: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
 
