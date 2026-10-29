@@ -1,20 +1,23 @@
 # Dependencies
 node_modules/
-web/node_modules/
+**/node_modules/
 
 # Build outputs
 dist/
-web/dist/
+**/dist/
 build/
+**/build/
 *.egg-info/
 
 # Python
 __pycache__/
-*/__pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 .venv/
+**/.venv/
 venv/
+**/venv/
 env/
 ENV/
 
@@ -23,14 +26,14 @@ ENV/
 *.db-shm
 *.db-wal
 *.sqlite3
-data/*.db
-data/*.db-shm
-data/*.db-wal
+**/data/*.db
+**/data/*.db-shm
+**/data/*.db-wal
 signalmap.db
 
 # MaxMind GeoIP MMDB databases (large binaries >50MB)
 *.mmdb
-data/*.mmdb
+**/data/*.mmdb
 
 # Environment variables & secrets
 .env
@@ -51,8 +54,7 @@ pnpm-debug.log*
 *.swp
 *.swo
 
-# Agent & IDE workspace configurations
-.agents/
+# Agent & IDE workspace configurations (note: .agents/ is tracked)
 .codex/
 .impeccable/
 .gemini/
@@ -60,3 +62,4 @@ pnpm-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
+
