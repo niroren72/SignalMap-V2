@@ -206,7 +206,6 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
         'CONNECTING ANTIGRAVITY TELEMETRY FIELD...',
         'CALIBRATING 3D ORBITAL TOPOLOGY...',
         'SYNCHRONIZING REALTIME WEBSOCKET FEED...',
-        'READY // ORBITAL LOCK CONFIRMED',
     ];
 
     const handleDismiss = useCallback(() => {
@@ -785,22 +784,10 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
             {/* ── Exact antigravity.google WebGL GPGPU Particle Field ── */}
             <div ref={mountRef} className="absolute inset-0 pointer-events-none z-20" />
 
-            {/* ── Ambient Antigravity Nebula Atmosphere ── */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] bg-gradient-to-tr from-[#3186FF]/12 via-[#7189FF]/8 to-transparent rounded-full blur-[140px] pointer-events-none z-0" />
-
             {/* ── Central SignalMap Hero Branding Container ── */}
             <div className="relative z-30 flex flex-col items-center max-w-lg px-6 text-center animate-fade-in pointer-events-auto">
                 {/* Precision Aerospace Logo Holographic Card */}
                 <div className="relative flex items-center justify-center mb-7">
-                    {/* Outer Rotating Dashed Gravitational Ring */}
-                    <div className="absolute w-72 h-72 rounded-full border border-dashed border-[#7189FF]/30 animate-[spin_28s_linear_infinite] pointer-events-none" />
-
-                    {/* Counter-Rotating Inner Field Ring */}
-                    <div className="absolute w-60 h-60 rounded-full border border-[#3186FF]/25 animate-[spin_20s_linear_infinite_reverse] pointer-events-none" />
-
-                    {/* Concentric Pulsing Radar Blip Wave */}
-                    <span className="absolute w-52 h-52 rounded-full bg-[#7189FF]/10 animate-ping pointer-events-none" />
-
                     {/* Central Holographic Keycard Emblem */}
                     <HolographicCardLogo onCardClick={manualDismiss ? handleDismiss : undefined} />
                 </div>
@@ -814,9 +801,6 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
                                 MAP
                             </span>
                         </h1>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#3186FF]/20 border border-[#7189FF]/40 text-[#8AB4F8] shadow-sm">
-                            v4.8-aero
-                        </span>
                     </div>
                     <p className="text-[11px] md:text-xs font-mono uppercase tracking-[0.25em] text-slate-400 font-medium">
                         Aerospace Telemetry &amp; Threat Observability
@@ -836,27 +820,11 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
 
                     <div className="flex items-center justify-between font-mono text-[11px] text-slate-400">
                         <span className="text-[#8AB4F8] font-semibold truncate max-w-[210px] text-left">
-                            {manualDismiss && progress >= 100
-                                ? 'READY // CLICK ANYWHERE TO DISMISS'
-                                : statusSteps[statusIndex]}
+                            {progress < 100 ? statusSteps[statusIndex] : ''}
                         </span>
                         <span className="font-bold text-slate-200">{progress}%</span>
                     </div>
                 </div>
-
-                {/* Dismiss Button Badge when opened from Settings */}
-                {manualDismiss && (
-                    <div
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleDismiss();
-                        }}
-                        className="mb-4 px-4 py-1.5 rounded-full border border-cyan-500/40 bg-cyan-950/60 hover:bg-cyan-900/80 text-cyan-300 font-mono text-[11px] tracking-widest flex items-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.3)] transition cursor-pointer animate-pulse"
-                    >
-                        <span className="w-2 h-2 rounded-full bg-cyan-400" />
-                        <span>CLICK ANYWHERE TO DISMISS</span>
-                    </div>
-                )}
 
                 {/* Aerospace Telemetry Metadata Footer */}
                 <div className="flex items-center justify-center gap-3 text-[10px] font-mono text-slate-500 border-t border-slate-800/80 pt-3">

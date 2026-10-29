@@ -144,9 +144,6 @@ export function Header() {
                             <span className="text-[15px] font-bold tracking-tight text-white flex items-center gap-1.5">
                                 <span className="text-emerald-400">⚡</span> SignalMap
                             </span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-mono tracking-wide">
-                                v4.8-aero
-                            </span>
                         </div>
 
                         {/* Workspace breadcrumb dropdown */}

@@ -16,7 +16,7 @@
 ---
 
 ## 🛠️ Active & Recently Touched Files
-- `signalmap/web/src/components/LoadingScreen.tsx` (Exact antigravity.google WebGL GPGPU particle shader, Poisson-disk dots, size, color & ring displacement)
+- `signalmap/web/src/components/LoadingScreen.tsx` & `HolographicCardLogo.tsx` & `Header.tsx` (Cleaned up logo card frame, removed glowing circles/rings, removed v4.8-aero & READY // CLICK... prompts)
 - `signalmap/agent/collectors/socket_collector.py` (Socket polling & process mapping)
 - `signalmap/web/src/components/DetailPanel.tsx` (Slide-over detail inspector)
 - `signalmap/web/src/components/LiveConnectionTable.tsx` / `ConnectionTable.tsx` (Telemetry grid)

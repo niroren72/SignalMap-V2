@@ -158,9 +158,6 @@ void main() {
     // ── SignalMap Central Aerospace Emblem Holographic Geometry ──
     float diamondOuter = sdDiamond(p, 0.38, 0.52);
     float diamondInner = sdDiamond(p, 0.24, 0.34);
-    float centerCircle = length(p) - 0.055;
-    float radarRing1 = abs(length(p) - 0.12) - 0.002;
-    float radarRing2 = abs(length(p) - 0.19) - 0.002;
 
     float insideShield = 1.0 - smoothstep(-aa * 1.5, -aa * 0.5, diamondOuter);
     float outsideShield = smoothstep(aa * 0.5, aa * 1.5, diamondOuter);
@@ -198,16 +195,10 @@ void main() {
     // Shield borders with brilliant foil reflections
     float shieldBorder1 = stroke(diamondOuter, 0.0025, aa * 0.7);
     float shieldBorder2 = stroke(diamondInner, 0.0018, aa * 0.7);
-    float ring1Stroke = stroke(radarRing1, 0.0015, aa * 0.6);
-    float ring2Stroke = stroke(radarRing2, 0.0015, aa * 0.6);
-    float centerDot = 1.0 - smoothstep(0.038, 0.046, length(p));
 
     vec3 foilSpecular = outerPearl * 0.85 + vec3(0.3) + outerDiffraction * 0.35;
     baseColor = mix(baseColor, foilSpecular, shieldBorder1 * (0.4 + light * 0.6));
     baseColor = mix(baseColor, innerFoil * 1.2, shieldBorder2 * (0.35 + light * 0.65));
-    baseColor = mix(baseColor, vec3(0.0, 0.75, 0.4) + outerPearl * 0.3, ring1Stroke * (0.3 + light * 0.5));
-    baseColor = mix(baseColor, vec3(0.4, 0.6, 1.0) + outerPearl * 0.4, ring2Stroke * (0.3 + light * 0.5));
-    baseColor = mix(baseColor, vec3(0.6, 0.8, 1.0), centerDot);
 
     // Micro dots grid in background
     vec2 grid = (fract((p + 1.0) * 18.0) - 0.5) / 18.0;
@@ -442,22 +433,10 @@ export function HolographicCardLogo({ className = '', onCardClick }: Holographic
             />
 
             {/* Crisp High-Res Vector Overlay: Aerospace Shield & Precision Typography */}
-            <div className="absolute inset-0 rounded-[18px] pointer-events-none flex flex-col justify-between p-3 z-10">
-                {/* Top Header Card Metadata */}
-                <div className="flex items-center justify-between text-[9px] font-mono tracking-wider text-slate-400/80 uppercase">
-                    <span className="flex items-center gap-1 font-semibold text-[#8AB4F8]">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#00B95C] animate-pulse" />
-                        AERO-01
-                    </span>
-                    <span className="text-slate-500 text-[8px]">V4.8</span>
-                </div>
-
+            <div className="absolute inset-0 rounded-[18px] pointer-events-none flex flex-col items-center justify-center p-3 z-10">
                 {/* Center SVG Diamond Aerospace Shield */}
-                <div className="flex flex-col items-center justify-center my-auto">
+                <div className="flex flex-col items-center justify-center">
                     <div className="relative flex items-center justify-center">
-                        {/* Concentric Pulsing Radar Blip Wave */}
-                        <span className="absolute w-14 h-14 rounded-full bg-[#7189FF]/15 animate-ping" />
-
                         <svg
                             className="w-12 h-12 text-[#7189FF] drop-shadow-[0_0_16px_rgba(113,137,255,0.9)] transition-transform duration-300 group-hover:scale-105"
                             viewBox="0 0 24 24"
@@ -486,21 +465,12 @@ export function HolographicCardLogo({ className = '', onCardClick }: Holographic
                                 strokeWidth="1.1"
                                 strokeOpacity="0.85"
                             />
-                            {/* Concentric Center Radar Beacon Node */}
-                            <circle cx="12" cy="12" r="2.2" fill="#8AB4F8" className="animate-pulse" />
-                            <circle cx="12" cy="12" r="4.2" stroke="#7189FF" strokeWidth="0.8" strokeDasharray="2 2" />
                         </svg>
                     </div>
 
                     <span className="mt-1.5 text-[8.5px] font-mono tracking-[0.2em] uppercase font-bold text-slate-300 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
                         SIGNALMAP
                     </span>
-                </div>
-
-                {/* Bottom Footer Card Details */}
-                <div className="flex items-center justify-between text-[8px] font-mono text-slate-400/70 border-t border-white/10 pt-1.5">
-                    <span className="tracking-widest text-[#7189FF]/90 font-semibold">LEVEL 5</span>
-                    <span className="text-slate-500 tracking-tighter">SEC // AIRGAP</span>
                 </div>
             </div>
 
