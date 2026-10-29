@@ -1,7 +1,111 @@
 import { useMemo, useState, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useConnectionStore } from '../stores/connectionStore';
+import type { ConnectionEvent } from '@shared/types';
 import { Search, X, ChevronUp, ChevronDown, Download } from 'lucide-react';
+
+export interface DataSourceMeta {
+    id: string;
+    label: string;
+    sublabel: string;
+    icon: string;
+    badgeClass: string;
+}
+
+export function getDataSourceMeta(e: ConnectionEvent): DataSourceMeta {
+    const raw = (e.source_collector || (e as { source_plugin?: string }).source_plugin || 'psutil_sockets').toLowerCase();
+
+    switch (raw) {
+        case 'psutil_sockets':
+        case 'socket':
+        case 'netstat':
+        case 'windows':
+            return {
+                id: 'psutil_sockets',
+                label: 'Windows Socket',
+                sublabel: 'psutil_sockets',
+                icon: '🪟',
+                badgeClass: 'bg-cyan-950/60 border-cyan-500/35 text-cyan-300',
+            };
+        case 'windows_evtx':
+        case 'evtx':
+            return {
+                id: 'windows_evtx',
+                label: 'Windows EVTX',
+                sublabel: 'windows_evtx',
+                icon: '📄',
+                badgeClass: 'bg-blue-950/60 border-blue-500/35 text-blue-300',
+            };
+        case 'nginx_log':
+        case 'nginx':
+            return {
+                id: 'nginx_log',
+                label: 'Nginx / HTTP Log',
+                sublabel: 'nginx_log',
+                icon: '🌐',
+                badgeClass: 'bg-emerald-950/60 border-emerald-500/35 text-emerald-300',
+            };
+        case 'jsonl_log':
+        case 'jsonl':
+            return {
+                id: 'jsonl_log',
+                label: 'JSONL Log Import',
+                sublabel: 'jsonl_log',
+                icon: '📋',
+                badgeClass: 'bg-violet-950/60 border-violet-500/35 text-violet-300',
+            };
+        case 'salesforce':
+            return {
+                id: 'salesforce',
+                label: 'Salesforce API',
+                sublabel: 'salesforce',
+                icon: '☁️',
+                badgeClass: 'bg-sky-950/60 border-sky-500/35 text-sky-300',
+            };
+        case 'hris':
+            return {
+                id: 'hris',
+                label: 'HRIS Identity Mesh',
+                sublabel: 'hris',
+                icon: '👤',
+                badgeClass: 'bg-amber-950/60 border-amber-500/35 text-amber-300',
+            };
+        case 'macos':
+            return {
+                id: 'macos',
+                label: 'macOS Daemon',
+                sublabel: 'macos',
+                icon: '🍎',
+                badgeClass: 'bg-slate-800/80 border-slate-600/50 text-slate-200',
+            };
+        case 'cloud':
+        case 'aws':
+            return {
+                id: 'cloud',
+                label: 'Cloud VPC Flow',
+                sublabel: 'cloud_vpc',
+                icon: '🌐',
+                badgeClass: 'bg-indigo-950/60 border-indigo-500/35 text-indigo-300',
+            };
+        case 'mock_generator':
+        case 'mock':
+            return {
+                id: 'mock_generator',
+                label: 'Synthetic Stream',
+                sublabel: 'mock_generator',
+                icon: '🧪',
+                badgeClass: 'bg-purple-950/60 border-purple-500/35 text-purple-300',
+            };
+        default:
+            return {
+                id: raw,
+                label: e.source_collector || 'Custom Source',
+                sublabel: raw,
+                icon: '🔌',
+                badgeClass: 'bg-slate-800/80 border-slate-700 text-slate-300',
+            };
+    }
+}
 
 export function ConnectionTable() {
     const {
@@ -35,8 +139,11 @@ export function ConnectionTable() {
             if (filters.protocol && e.protocol !== filters.protocol) return false;
             if (filters.direction && e.direction !== filters.direction) return false;
             if (filters.category && e.service?.category !== filters.category) return false;
+            if (filters.source && getDataSourceMeta(e).id !== filters.source && e.source_collector !== filters.source) return false;
             if (filters.anomalyOnly && !e.anomaly?.is_anomaly) return false;
             if (filters.severity && e.anomaly?.severity !== filters.severity) return false;
+
+            const sourceMeta = getDataSourceMeta(e);
 
             // Global search query
             if (searchQuery) {
@@ -49,7 +156,9 @@ export function ConnectionTable() {
                     e.service?.name?.toLowerCase().includes(q) ||
                     e.geo?.city?.toLowerCase().includes(q) ||
                     e.geo?.country?.toLowerCase().includes(q) ||
-                    e.asn?.org?.toLowerCase().includes(q);
+                    e.asn?.org?.toLowerCase().includes(q) ||
+                    sourceMeta.label.toLowerCase().includes(q) ||
+                    sourceMeta.sublabel.toLowerCase().includes(q);
                 if (!matchGlobal) return false;
             }
 
@@ -66,6 +175,8 @@ export function ConnectionTable() {
                     e.geo?.country?.toLowerCase().includes(tq) ||
                     e.geo?.city?.toLowerCase().includes(tq) ||
                     e.asn?.org?.toLowerCase().includes(tq) ||
+                    sourceMeta.label.toLowerCase().includes(tq) ||
+                    sourceMeta.sublabel.toLowerCase().includes(tq) ||
                     e.anomaly?.title?.toLowerCase().includes(tq) ||
                     e.anomaly?.description?.toLowerCase().includes(tq) ||
                     e.anomaly?.tags?.some((t) => t.toLowerCase().includes(tq));
@@ -92,6 +203,11 @@ export function ConnectionTable() {
                     const pa = (a.local?.process_name || '') + (a.local?.user || '');
                     const pb = (b.local?.process_name || '') + (b.local?.user || '');
                     return pa.localeCompare(pb) * dir;
+                }
+                case 'source': {
+                    const sa = getDataSourceMeta(a).label;
+                    const sb = getDataSourceMeta(b).label;
+                    return sa.localeCompare(sb) * dir;
                 }
                 case 'protocol': {
                     return (a.protocol || '').localeCompare(b.protocol || '') * dir;
@@ -204,7 +320,7 @@ export function ConnectionTable() {
                             type="text"
                             value={tableSearch}
                             onChange={(e) => setTableSearch(e.target.value)}
-                            placeholder="Filter table by process, IP, domain, city..."
+                            placeholder="Filter table by process, data source, IP, domain, city..."
                             className="w-full pl-8 pr-7 py-1.5 bg-slate-900 border border-slate-700/80 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/80 transition-colors"
                         />
                         {tableSearch && (
@@ -271,6 +387,15 @@ export function ConnectionTable() {
                                 </span>
                             </th>
                             <th
+                                onClick={() => setTableSort('source')}
+                                className="px-3.5 py-2.5 cursor-pointer hover:text-cyan-400 transition whitespace-nowrap"
+                            >
+                                <span className="inline-flex items-center gap-1">
+                                    DATA SOURCE
+                                    {tableSortField === 'source' && (tableSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                                </span>
+                            </th>
+                            <th
                                 onClick={() => setTableSort('protocol')}
                                 className="px-3.5 py-2.5 cursor-pointer hover:text-cyan-400 transition whitespace-nowrap"
                             >
@@ -326,7 +451,7 @@ export function ConnectionTable() {
                     <tbody className="divide-y divide-slate-800/60 font-sans">
                         {sortedEvents.length === 0 ? (
                             <tr>
-                                <td colSpan={12} className="px-6 py-16 text-center text-slate-500 font-mono text-sm">
+                                <td colSpan={13} className="px-6 py-16 text-center text-slate-500 font-mono text-sm">
                                     No connection records matching the selected filters.
                                 </td>
                             </tr>
@@ -334,7 +459,7 @@ export function ConnectionTable() {
                             <>
                                 {paddingTop > 0 && (
                                     <tr>
-                                        <td style={{ height: `${paddingTop}px` }} colSpan={12} />
+                                        <td style={{ height: `${paddingTop}px` }} colSpan={13} />
                                     </tr>
                                 )}
                                 {virtualRows.map((virtualRow) => {
@@ -345,6 +470,7 @@ export function ConnectionTable() {
                                     const severity = e.anomaly?.severity;
                                     const localSocket = `${e.local?.host || '127.0.0.1'}:${e.local?.port || 0}`;
                                     const remoteSocket = `${e.remote?.ip || '0.0.0.0'}:${e.remote?.port || 0}`;
+                                    const sourceMeta = getDataSourceMeta(e);
 
                                     return (
                                         <tr
@@ -409,6 +535,17 @@ export function ConnectionTable() {
                                                     </span>
                                                 )}
                                             </div>
+                                        </td>
+
+                                        {/* Data Source */}
+                                        <td className="px-3.5 py-2.5 whitespace-nowrap">
+                                            <span
+                                                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-semibold ${sourceMeta.badgeClass}`}
+                                                title={`Collector: ${sourceMeta.sublabel}`}
+                                            >
+                                                <span>{sourceMeta.icon}</span>
+                                                <span>{sourceMeta.label}</span>
+                                            </span>
                                         </td>
 
                                         {/* Protocol */}
@@ -526,7 +663,7 @@ export function ConnectionTable() {
                             })}
                             {paddingBottom > 0 && (
                                 <tr>
-                                    <td style={{ height: `${paddingBottom}px` }} colSpan={12} />
+                                    <td style={{ height: `${paddingBottom}px` }} colSpan={13} />
                                 </tr>
                             )}
                         </>

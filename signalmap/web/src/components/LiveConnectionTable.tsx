@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useConnectionStore } from '../stores/connectionStore';
+import { getDataSourceMeta } from './ConnectionTable';
 import { ChevronDown, ChevronUp, Search, X, Copy, Check } from 'lucide-react';
 
 export function LiveConnectionTable() {
@@ -24,8 +25,11 @@ export function LiveConnectionTable() {
             if (filters.protocol && e.protocol !== filters.protocol) return false;
             if (filters.direction && e.direction !== filters.direction) return false;
             if (filters.category && e.service?.category !== filters.category) return false;
+            if (filters.source && getDataSourceMeta(e).id !== filters.source && e.source_collector !== filters.source) return false;
             if (filters.anomalyOnly && !e.anomaly?.is_anomaly) return false;
             if (filters.severity && e.anomaly?.severity !== filters.severity) return false;
+
+            const sourceMeta = getDataSourceMeta(e);
 
             if (searchQuery) {
                 const q = searchQuery.toLowerCase();
@@ -36,7 +40,9 @@ export function LiveConnectionTable() {
                     e.remote?.hostname?.toLowerCase().includes(q) ||
                     e.service?.name?.toLowerCase().includes(q) ||
                     e.geo?.city?.toLowerCase().includes(q) ||
-                    e.geo?.country?.toLowerCase().includes(q);
+                    e.geo?.country?.toLowerCase().includes(q) ||
+                    sourceMeta.label.toLowerCase().includes(q) ||
+                    sourceMeta.sublabel.toLowerCase().includes(q);
                 if (!matchGlobal) return false;
             }
 
@@ -50,6 +56,8 @@ export function LiveConnectionTable() {
                     e.service?.name?.toLowerCase().includes(tq) ||
                     e.protocol?.toLowerCase().includes(tq) ||
                     e.geo?.country?.toLowerCase().includes(tq) ||
+                    sourceMeta.label.toLowerCase().includes(tq) ||
+                    sourceMeta.sublabel.toLowerCase().includes(tq) ||
                     e.anomaly?.title?.toLowerCase().includes(tq);
                 if (!matchTable) return false;
             }
@@ -74,6 +82,11 @@ export function LiveConnectionTable() {
                     const pa = (a.local?.process_name || '') + (a.local?.user || '');
                     const pb = (b.local?.process_name || '') + (b.local?.user || '');
                     return pa.localeCompare(pb) * dir;
+                }
+                case 'source': {
+                    const sa = getDataSourceMeta(a).label;
+                    const sb = getDataSourceMeta(b).label;
+                    return sa.localeCompare(sb) * dir;
                 }
                 case 'protocol': {
                     return (a.protocol || '').localeCompare(b.protocol || '') * dir;
@@ -285,6 +298,12 @@ export function LiveConnectionTable() {
                                         {tableSortField === 'process' && (tableSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                                     </span>
                                 </th>
+                                <th onClick={() => setTableSort('source')} className="px-3 py-2 cursor-pointer hover:opacity-80">
+                                    <span className="inline-flex items-center gap-1">
+                                        Data Source
+                                        {tableSortField === 'source' && (tableSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                                    </span>
+                                </th>
                                 <th onClick={() => setTableSort('protocol')} className="px-3 py-2 cursor-pointer hover:opacity-80">
                                     <span className="inline-flex items-center gap-1">
                                         Proto
@@ -317,7 +336,7 @@ export function LiveConnectionTable() {
                         <tbody className="divide-y font-mono text-[11px]" style={{ borderColor: 'var(--color-border-hairline)' }}>
                             {sortedEvents.length === 0 ? (
                                 <tr>
-                                    <td colSpan={10} className="px-4 py-8 text-center" style={{ color: 'var(--color-text-muted)' }}>
+                                    <td colSpan={11} className="px-4 py-8 text-center" style={{ color: 'var(--color-text-muted)' }}>
                                         No active sockets matching current filters.
                                     </td>
                                 </tr>
@@ -327,6 +346,7 @@ export function LiveConnectionTable() {
                                     const isSelected = selectedId === eventId;
                                     const isAnomaly = e.anomaly?.is_anomaly;
                                     const severity = e.anomaly?.severity;
+                                    const sourceMeta = getDataSourceMeta(e);
 
                                     return (
                                         <tr
@@ -395,6 +415,15 @@ export function LiveConnectionTable() {
                                                         </span>
                                                     )}
                                                 </div>
+                                            </td>
+                                            <td className="px-3 py-1.5 whitespace-nowrap">
+                                                <span
+                                                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-[9px] font-mono font-semibold ${sourceMeta.badgeClass}`}
+                                                    title={`Collector: ${sourceMeta.sublabel}`}
+                                                >
+                                                    <span>{sourceMeta.icon}</span>
+                                                    <span>{sourceMeta.label}</span>
+                                                </span>
                                             </td>
                                             <td className="px-3 py-1.5 whitespace-nowrap uppercase font-bold" style={{ color: 'var(--color-text-secondary)' }}>
                                                 {e.protocol || 'TCP'}

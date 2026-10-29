@@ -91,7 +91,7 @@ interface ConnectionStore {
     setGlobeProjection: (projection: GlobeProjection) => void;
 
     // Table Sorting
-    tableSortField: 'timestamp' | 'process' | 'protocol' | 'remote_ip' | 'country' | 'category' | 'bytes' | 'severity';
+    tableSortField: 'timestamp' | 'process' | 'source' | 'protocol' | 'remote_ip' | 'country' | 'category' | 'bytes' | 'severity';
     tableSortDirection: 'asc' | 'desc';
 
     // Settings

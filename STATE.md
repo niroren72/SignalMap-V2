@@ -16,10 +16,10 @@
 ---
 
 ## 🛠️ Active & Recently Touched Files
+- `signalmap/web/src/components/ConnectionTable.tsx`, `LiveConnectionTable.tsx`, & `signalmap/web/src/stores/connectionStore.ts` (Added `DATA SOURCE` column with badge styling, sorting, and search/filtering by collector source)
 - `signalmap/web/src/components/LoadingScreen.tsx` & `HolographicCardLogo.tsx` & `Header.tsx` (Cleaned up logo card frame, removed glowing circles/rings, removed v4.8-aero & READY // CLICK... prompts)
 - `signalmap/agent/collectors/socket_collector.py` (Socket polling & process mapping)
 - `signalmap/web/src/components/DetailPanel.tsx` (Slide-over detail inspector)
-- `signalmap/web/src/components/LiveConnectionTable.tsx` / `ConnectionTable.tsx` (Telemetry grid)
 - `signalmap/web/src/components/ModulesView.tsx` & `DashboardView.tsx` (App view components)
 - `signalmap/web/src/types/modules.ts` (Data contracts & types)
 
