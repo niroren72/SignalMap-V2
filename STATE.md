@@ -16,7 +16,8 @@
 ---
 
 ## 🛠️ Active & Recently Touched Files
-- `signalmap/agent/collectors/socket_collector.py` (Active in editor - socket polling & process mapping)
+- `signalmap/web/src/components/LoadingScreen.tsx` (Exact antigravity.google WebGL GPGPU particle shader, Poisson-disk dots, size, color & ring displacement)
+- `signalmap/agent/collectors/socket_collector.py` (Socket polling & process mapping)
 - `signalmap/web/src/components/DetailPanel.tsx` (Slide-over detail inspector)
 - `signalmap/web/src/components/LiveConnectionTable.tsx` / `ConnectionTable.tsx` (Telemetry grid)
 - `signalmap/web/src/components/ModulesView.tsx` & `DashboardView.tsx` (App view components)

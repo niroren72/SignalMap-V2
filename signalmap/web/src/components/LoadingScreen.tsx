@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import * as THREE from 'three';
 import { HolographicCardLogo } from './HolographicCardLogo';
 
 interface LoadingScreenProps {
@@ -7,249 +8,199 @@ interface LoadingScreenProps {
     onComplete: () => void;
 }
 
-// ── Remotion Animation Primitives (Easing, Spring & Interpolation) ──
+// ── Exact GLSL Simplex Noise Library from antigravity.google ──
+const ANTIGRAVITY_GLSL_NOISE = /* glsl */ `
+  vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
+  vec4 permute(vec4 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
+  float permute(float x) { return floor(mod(((x*34.0)+1.0)*x, 289.0)); }
 
-/**
- * Remotion-standard cubic bezier easing: Easing.bezier(0.16, 1, 0.3, 1)
- * Used by Apple design engineering and Remotion for fluid momentum curves.
- */
-function remotionCubicBezier(p1x: number, p1y: number, p2x: number, p2y: number) {
-    const cx = 3 * p1x;
-    const bx = 3 * (p2x - p1x) - cx;
-    const ax = 1 - cx - bx;
+  vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+  float taylorInvSqrt(float r) { return 1.79284291400159 - 0.85373472095314 * r; }
 
-    const cy = 3 * p1y;
-    const by = 3 * (p2y - p1y) - cy;
-    const ay = 1 - cy - by;
+  float snoise(vec3 v) {
+    const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+    const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
 
-    function sampleCurveX(t: number) {
-        return ((ax * t + bx) * t + cx) * t;
-    }
+    vec3 i  = floor(v + dot(v, C.yyy));
+    vec3 x0 = v - i + dot(i, C.xxx);
 
-    function sampleCurveY(t: number) {
-        return ((ay * t + by) * t + cy) * t;
-    }
+    vec3 g = step(x0.yzx, x0.xyz);
+    vec3 l = 1.0 - g;
+    vec3 i1 = min(g.xyz, l.zxy);
+    vec3 i2 = max(g.xyz, l.zxy);
 
-    function solveCurveX(x: number) {
-        let t0 = 0;
-        let t1 = 1;
-        let t2 = x;
-        for (let i = 0; i < 8; i++) {
-            const x2 = sampleCurveX(t2) - x;
-            if (Math.abs(x2) < 1e-4) return t2;
-            const d2 = (3 * ax * t2 + 2 * bx) * t2 + cx;
-            if (Math.abs(d2) < 1e-5) break;
-            t2 = t2 - x2 / d2;
+    vec3 x1 = x0 - i1 + 1.0 * C.xxx;
+    vec3 x2 = x0 - i2 + 2.0 * C.xxx;
+    vec3 x3 = x0 - 1.0 + 3.0 * C.xxx;
+
+    i = mod(i, 289.0);
+    vec4 p = permute(permute(permute(
+              i.z + vec4(0.0, i1.z, i2.z, 1.0))
+            + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+            + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+
+    float n_ = 1.0/7.0;
+    vec3 ns = n_ * D.wyz - D.xzx;
+
+    vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+
+    vec4 x_ = floor(j * ns.z);
+    vec4 y_ = floor(j - 7.0 * x_);
+
+    vec4 x = x_ * ns.x + ns.yyyy;
+    vec4 y = y_ * ns.x + ns.yyyy;
+    vec4 h = 1.0 - abs(x) - abs(y);
+
+    vec4 b0 = vec4(x.xy, y.xy);
+    vec4 b1 = vec4(x.zw, y.zw);
+
+    vec4 s0 = floor(b0)*2.0 + 1.0;
+    vec4 s1 = floor(b1)*2.0 + 1.0;
+    vec4 sh = -step(h, vec4(0.0));
+
+    vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
+    vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+
+    vec3 p0 = vec3(a0.xy, h.x);
+    vec3 p1 = vec3(a0.zw, h.y);
+    vec3 p2 = vec3(a1.xy, h.z);
+    vec3 p3 = vec3(a1.zw, h.w);
+
+    vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+    p0 *= norm.x;
+    p1 *= norm.y;
+    p2 *= norm.z;
+    p3 *= norm.w;
+
+    vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+    m = m * m;
+    return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+  }
+`;
+
+// ── Exact 2D Poisson-Disk Sampling from antigravity.google ──
+// Generates organic blue-noise point distribution in [0, 500] x [0, 500]
+function generatePoissonDiskPoints(
+    width: number,
+    height: number,
+    minDistance: number,
+    maxDistance: number,
+    maxTries = 20
+): Array<[number, number]> {
+    const cellSize = minDistance / Math.SQRT2;
+    const cols = Math.ceil(width / cellSize);
+    const rows = Math.ceil(height / cellSize);
+    const grid = new Int32Array(cols * rows).fill(-1);
+
+    const samplePoints: Array<[number, number]> = [];
+    const processList: Array<[number, number]> = [];
+
+    const addPoint = (pt: [number, number]) => {
+        const idx = samplePoints.length;
+        samplePoints.push(pt);
+        processList.push(pt);
+        const gx = Math.floor(pt[0] / cellSize);
+        const gy = Math.floor(pt[1] / cellSize);
+        if (gx >= 0 && gx < cols && gy >= 0 && gy < rows) {
+            grid[gy * cols + gx] = idx;
         }
-        while (t0 < t1) {
-            const x2 = sampleCurveX(t2);
-            if (Math.abs(x2 - x) < 1e-4) return t2;
-            if (x > x2) t0 = t2;
-            else t1 = t2;
-            t2 = (t1 - t0) * 0.5 + t0;
-        }
-        return t2;
-    }
-
-    return function (x: number): number {
-        return sampleCurveY(solveCurveX(Math.max(0, Math.min(1, x))));
     };
-}
 
-const easeAntigravity = remotionCubicBezier(0.16, 1, 0.3, 1);
+    const inNeighbourhood = (pt: [number, number]): boolean => {
+        const gx = Math.floor(pt[0] / cellSize);
+        const gy = Math.floor(pt[1] / cellSize);
+        const minDistSq = minDistance * minDistance;
 
-/**
- * Remotion interpolate implementation
- */
-function remotionInterpolate(
-    input: number,
-    inputRange: [number, number],
-    outputRange: [number, number],
-    options?: {
-        extrapolateLeft?: 'clamp' | 'extend';
-        extrapolateRight?: 'clamp' | 'extend';
-        easing?: (t: number) => number;
-    }
-): number {
-    const [inMin, inMax] = inputRange;
-    const [outMin, outMax] = outputRange;
-    if (inMax === inMin) return outMin;
-    let t = (input - inMin) / (inMax - inMin);
-
-    if (options?.extrapolateLeft === 'clamp' && t < 0) t = 0;
-    if (options?.extrapolateRight === 'clamp' && t > 1) t = 1;
-
-    if (options?.easing) {
-        t = options.easing(Math.max(0, Math.min(1, t)));
-    }
-
-    return outMin + t * (outMax - outMin);
-}
-
-// ── 2D/3D Simplex Noise (Exact match to Google Antigravity snoise shader) ──
-function createAntigravityNoise() {
-    const p = new Uint8Array(256);
-    const seed = 127;
-    let s = seed;
-    for (let i = 0; i < 256; i++) {
-        s = (s * 16807 + 11) % 2147483647;
-        p[i] = s & 255;
-    }
-    const perm = new Uint8Array(512);
-    for (let i = 0; i < 512; i++) {
-        perm[i] = p[i & 255];
-    }
-
-    const grad3 = [
-        [1, 1, 0], [-1, 1, 0], [1, -1, 0], [-1, -1, 0],
-        [1, 0, 1], [-1, 0, 1], [1, 0, -1], [-1, 0, -1],
-        [0, 1, 1], [0, -1, 1], [0, 1, -1], [0, -1, -1],
-    ];
-
-    return function noise2D(xin: number, yin: number): number {
-        const F2 = 0.5 * (Math.sqrt(3.0) - 1.0);
-        const s = (xin + yin) * F2;
-        const i = Math.floor(xin + s);
-        const j = Math.floor(yin + s);
-        const G2 = (3.0 - Math.sqrt(3.0)) / 6.0;
-        const t = (i + j) * G2;
-        const X0 = i - t;
-        const Y0 = j - t;
-        const x0 = xin - X0;
-        const y0 = yin - Y0;
-
-        let i1 = 0, j1 = 0;
-        if (x0 > y0) { i1 = 1; j1 = 0; }
-        else { i1 = 0; j1 = 1; }
-
-        const x1 = x0 - i1 + G2;
-        const y1 = y0 - j1 + G2;
-        const x2 = x0 - 1.0 + 2.0 * G2;
-        const y2 = y0 - 1.0 + 2.0 * G2;
-
-        const ii = i & 255;
-        const jj = j & 255;
-
-        const gi0 = perm[ii + perm[jj]] % 12;
-        const gi1 = perm[ii + i1 + perm[jj + j1]] % 12;
-        const gi2 = perm[ii + 1 + perm[jj + 1]] % 12;
-
-        let n0 = 0, n1 = 0, n2 = 0;
-
-        let t0 = 0.5 - x0 * x0 - y0 * y0;
-        if (t0 > 0) {
-            t0 *= t0;
-            n0 = t0 * t0 * (grad3[gi0][0] * x0 + grad3[gi0][1] * y0);
+        for (let dy = -2; dy <= 2; dy++) {
+            const ny = gy + dy;
+            if (ny < 0 || ny >= rows) continue;
+            for (let dx = -2; dx <= 2; dx++) {
+                const nx = gx + dx;
+                if (nx < 0 || nx >= cols) continue;
+                const neighborIdx = grid[ny * cols + nx];
+                if (neighborIdx !== -1) {
+                    const nPt = samplePoints[neighborIdx];
+                    const ddx = pt[0] - nPt[0];
+                    const ddy = pt[1] - nPt[1];
+                    if (ddx * ddx + ddy * ddy < minDistSq) {
+                        return true;
+                    }
+                }
+            }
         }
-
-        let t1 = 0.5 - x1 * x1 - y1 * y1;
-        if (t1 > 0) {
-            t1 *= t1;
-            n1 = t1 * t1 * (grad3[gi1][0] * x1 + grad3[gi1][1] * y1);
-        }
-
-        let t2 = 0.5 - x2 * x2 - y2 * y2;
-        if (t2 > 0) {
-            t2 *= t2;
-            n2 = t2 * t2 * (grad3[gi2][0] * x2 + grad3[gi2][1] * y2);
-        }
-
-        return 70.0 * (n0 + n1 + n2);
+        return false;
     };
-}
 
-// ── Particle Data Structures ──
+    // Seed initial point
+    addPoint([Math.random() * width, Math.random() * height]);
 
-interface FieldParticle {
-    baseX: number;           // Normalized reference anchor [0, 1]
-    baseY: number;           // Normalized reference anchor [0, 1]
-    x: number;               // Current world position (px)
-    y: number;
-    prevX: number;
-    prevY: number;
-    size: number;            // Radius / semi-minor axis (px)
-    color: string;           // Tri-color blended Google palette
-    alpha: number;           // Target opacity
-    seed: number;            // Random phase offset
-    scale: number;           // Dynamic scale [0..1]
-    velocity: number;        // Inertial velocity from shockwave
-}
+    const deltaDist = Math.max(0, maxDistance - minDistance);
+    while (processList.length > 0) {
+        const current = processList[0];
+        let found = false;
 
-interface OrbitalSatellite {
-    angle: number;           // Radial orbital angle
-    speed: number;           // Angular velocity
-    orbitRadius: number;     // Distance from gravity center
-    radiusVariation: number; // Harmonic breath scale
-    size: number;
-    color: string;
-    alpha: number;
-    pulsePhase: number;
-    pulseSpeed: number;
-    x: number;
-    y: number;
-    prevX: number;
-    prevY: number;
-    trailDelay: number;
-}
+        for (let t = 0; t < maxTries; t++) {
+            const radius = minDistance + deltaDist * Math.random();
+            const angle = Math.random() * Math.PI * 2;
+            const cx = current[0] + Math.cos(angle) * radius;
+            const cy = current[1] + Math.sin(angle) * radius;
 
-// Google Antigravity Brand Palette
-const ANTIGRAVITY_COLORS = {
-    blue: '#3186FF',    // Electric Cobalt Blue
-    royal: '#4285F4',   // Google Royal Blue
-    coral: '#FC413D',   // Crimson Coral Red
-    red: '#EA4335',     // Google Bright Red
-    amber: '#FBBC04',   // Solar Warm Gold
-    yellow: '#FFEE48',  // Radiant Yellow
-    emerald: '#00B95C',  // Emerald Green
-    mint: '#34A853',    // Mint Green
-    periwinkle: '#7189FF', // Antigravity Lavender / Violet
-    sky: '#8AB4F8',     // Starlight Sky Blue
-    white: '#FFFFFF',   // Starlight White
-};
+            if (cx >= 0 && cx < width && cy >= 0 && cy < height) {
+                const candidate: [number, number] = [cx, cy];
+                if (!inNeighbourhood(candidate)) {
+                    addPoint(candidate);
+                    found = true;
+                    break;
+                }
+            }
+        }
 
-const COLOR_SWATCHES = [
-    ANTIGRAVITY_COLORS.blue,
-    ANTIGRAVITY_COLORS.periwinkle,
-    ANTIGRAVITY_COLORS.sky,
-    ANTIGRAVITY_COLORS.coral,
-    ANTIGRAVITY_COLORS.emerald,
-    ANTIGRAVITY_COLORS.white,
-];
-
-// Helper: smoothstep equivalent
-function smoothstep(min: number, max: number, value: number): number {
-    const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
-    return x * x * (3 - 2 * x);
-}
-
-// Helper: color interpolator matching the Antigravity shader mix (Electric Blue -> Periwinkle -> Starlight Sky)
-function interpolateTriColor(t: number): string {
-    const clamped = Math.max(0, Math.min(1, t));
-    const h = 0.5;
-    if (clamped < h) {
-        // Mix Google Electric Blue (#3186FF) to Periwinkle (#7189FF)
-        const p = clamped / h;
-        const r = Math.round(49 + (113 - 49) * p);
-        const g = Math.round(134 + (137 - 134) * p);
-        const b = Math.round(255 + (255 - 255) * p);
-        return `rgb(${r}, ${g}, ${b})`;
-    } else {
-        // Mix Periwinkle (#7189FF) to Starlight Sky Blue (#8AB4F8)
-        const p = (clamped - h) / (1 - h);
-        const r = Math.round(113 + (138 - 113) * p);
-        const g = Math.round(137 + (180 - 137) * p);
-        const b = Math.round(255 + (248 - 255) * p);
-        return `rgb(${r}, ${g}, ${b})`;
+        if (!found) {
+            processList.shift();
+        }
     }
+
+    return samplePoints;
+}
+
+// ── 1D Value Noise for Idle Drift (Exact match to `kl` in antigravity.google) ──
+class Simple1DNoise {
+    private readonly MAX_VERTICES = 256;
+    private readonly MAX_VERTICES_MASK = 255;
+    private readonly r: number[] = [];
+
+    constructor() {
+        for (let i = 0; i < this.MAX_VERTICES; i++) {
+            this.r.push(Math.random());
+        }
+    }
+
+    getVal(x: number): number {
+        const floorX = Math.floor(x);
+        const t = x - floorX;
+        const smoothT = t * t * (3 - 2 * t);
+        const xMin = floorX & this.MAX_VERTICES_MASK;
+        const xMax = (xMin + 1) & this.MAX_VERTICES_MASK;
+        return this.r[xMin] * (1 - smoothT) + this.r[xMax] * smoothT;
+    }
+}
+
+// Linear map helper `P(e, t, n, r, i)` from antigravity.google
+function mapRange(val: number, inMin: number, inMax: number, outMin: number, outMax: number): number {
+    return ((val - inMin) * (outMax - outMin)) / (inMax - inMin) + outMin;
+}
+
+// Smooth cubic ease for progress bar
+function easeOutCubic(t: number): number {
+    return 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 3);
 }
 
 export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScreenProps) {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const mountRef = useRef<HTMLDivElement>(null);
     const [progress, setProgress] = useState(0);
     const [statusIndex, setStatusIndex] = useState(0);
     const [isExiting, setIsExiting] = useState(false);
 
-    // 5 telemetry initialization milestones
     const statusSteps = [
         'INITIALIZING SIGNALMAP AEROSPACE ENGINE...',
         'CONNECTING ANTIGRAVITY TELEMETRY FIELD...',
@@ -258,7 +209,6 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
         'READY // ORBITAL LOCK CONFIRMED',
     ];
 
-    // Dismiss trigger for manual dismiss mode
     const handleDismiss = useCallback(() => {
         if (isExiting) return;
         setIsExiting(true);
@@ -267,7 +217,7 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
         }, 700);
     }, [isExiting, onComplete]);
 
-    // ── Enforce Duration with Remotion-Smooth Interpolation ──
+    // ── Progress Counter & Auto-Dismiss Timer ──
     useEffect(() => {
         const TOTAL_DURATION_MS = manualDismiss ? 3200 : 5000;
         const startTime = performance.now();
@@ -277,16 +227,7 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
             const elapsed = now - startTime;
             const rawProgress = Math.min(1, elapsed / TOTAL_DURATION_MS);
 
-            // Remotion cubic bezier ease for realistic physics momentum
-            const smoothPct = Math.floor(
-                remotionInterpolate(rawProgress, [0, 1], [0, 100], {
-                    easing: easeAntigravity,
-                    extrapolateLeft: 'clamp',
-                    extrapolateRight: 'clamp',
-                })
-            );
-
-            setProgress(smoothPct);
+            setProgress(Math.floor(easeOutCubic(rawProgress) * 100));
 
             const step = Math.min(
                 statusSteps.length - 1,
@@ -299,7 +240,6 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
                 setProgress(100);
                 setStatusIndex(statusSteps.length - 1);
 
-                // If not manual dismiss, automatically exit
                 if (!manualDismiss) {
                     setTimeout(() => {
                         setIsExiting(true);
@@ -309,337 +249,529 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
                     }, 120);
                 }
             }
-        }, 20);
+        }, 25);
 
         return () => clearInterval(timer);
     }, [onComplete, manualDismiss, statusSteps.length]);
 
-    // ── Exact Antigravity Warp Field & Orbital Satellite Canvas Simulation ──
+    // ── Exact WebGL GPGPU Particle Shader from https://antigravity.google/ ──
     useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
+        const container = mountRef.current;
+        if (!container) return;
 
-        const ctx = canvas.getContext('2d', { alpha: true });
-        if (!ctx) return;
+        // Exact dark-mode data attributes from antigravity.google:
+        // data-theme="dark" data-ring-width="0.15" data-ring-width2="0.05"
+        // data-ring-displacement="0.23" data-density="220" data-particles-scale="0.65"
+        const DENSITY = 220;
+        const PARTICLES_SCALE = 0.65;
+        const RING_WIDTH = 0.15;
+        const RING_WIDTH2 = 0.05;
+        const RING_DISPLACEMENT = 0.23;
+        const COLOR_SCHEME = 0; // 0 = dark theme (#7189ff, #3074f9, #000000)
 
-        let animationFrameId: number;
-        let width = (canvas.width = window.innerWidth);
-        let height = (canvas.height = window.innerHeight);
+        const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+        let width = container.offsetWidth || window.innerWidth;
+        let height = container.offsetHeight || window.innerHeight;
+
+        // 1. Setup Three.js Renderer, Perspective Camera (FOV 40, z = 3.1) & Scene
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
+        camera.position.z = 3.1;
+
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true,
+            powerPreference: 'high-performance',
+            preserveDrawingBuffer: false,
+            stencil: false,
+            precision: 'highp',
+        });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(pixelRatio);
+        renderer.autoClear = false;
+        container.appendChild(renderer.domElement);
+
+        // Ensure float render target extension is active
+        const gl = renderer.getContext();
+        gl.getExtension('EXT_color_buffer_float');
+
+        // 2. Invisible Raycast Plane (12.5 x 12.5 at z=0) for exact 3D cursor projection
+        const raycaster = new THREE.Raycaster();
+        const mouseNDC = new THREE.Vector2();
+        const intersectionPoint = new THREE.Vector3();
+        let isIntersecting = false;
+        let hasMoved = false;
+        const cursorScreen = { x: width * 0.5, y: height * 0.5 };
+
+        const raycastPlane = new THREE.Mesh(
+            new THREE.PlaneGeometry(12.5, 12.5),
+            new THREE.MeshBasicMaterial({ color: 0xff0000, visible: false, side: THREE.DoubleSide })
+        );
+        scene.add(raycastPlane);
+
+        // 3. Generate Poisson-Disk Sampled Points in [500, 500] domain
+        const minDist = mapRange(DENSITY, 0, 300, 10, 2);
+        const maxDist = mapRange(DENSITY, 0, 300, 11, 3);
+        const rawPoints = generatePoissonDiskPoints(500, 500, minDist, maxDist, 20);
+
+        const texSize = 256;
+        const texLength = texSize * texSize;
+        const count = Math.min(rawPoints.length, texLength);
+
+        const posData = new Float32Array(texLength * 4);
+        for (let i = 0; i < count; i++) {
+            const idx = i * 4;
+            // Normalize [-250..250] to [-1..1]
+            posData[idx + 0] = (rawPoints[i][0] - 250) * (1 / 250);
+            posData[idx + 1] = (rawPoints[i][1] - 250) * (1 / 250);
+            posData[idx + 2] = 0; // initial scale
+            posData[idx + 3] = 0; // initial velocity
+        }
+
+        const posTex = new THREE.DataTexture(
+            posData,
+            texSize,
+            texSize,
+            THREE.RGBAFormat,
+            THREE.FloatType
+        );
+        posTex.needsUpdate = true;
+
+        const createRenderTarget = () =>
+            new THREE.WebGLRenderTarget(texSize, texSize, {
+                wrapS: THREE.ClampToEdgeWrapping,
+                wrapT: THREE.ClampToEdgeWrapping,
+                minFilter: THREE.NearestFilter,
+                magFilter: THREE.NearestFilter,
+                format: THREE.RGBAFormat,
+                type: THREE.FloatType,
+                depthBuffer: false,
+                stencilBuffer: false,
+            });
+
+        let rt1 = createRenderTarget();
+        let rt2 = createRenderTarget();
+
+        renderer.setRenderTarget(rt1);
+        renderer.setClearColor(0x000000, 0);
+        renderer.clear();
+        renderer.setRenderTarget(rt2);
+        renderer.setClearColor(0x000000, 0);
+        renderer.clear();
+        renderer.setRenderTarget(null);
+
+        // 4. Ping-Pong GPGPU Simulation Scene & ShaderMaterial
+        // Calculates mouse vector displacement:
+        //   dist = distance(curentPos.xy, uRingPos)
+        //   pos -= (uRingPos - (curentPos + disp)) * pow(t2, 0.75) * uRingDisplacement
+        const simScene = new THREE.Scene();
+        const simCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+        const ringPos = new THREE.Vector2(0, 0);
+        const cursorPos = new THREE.Vector2(0, 0);
+        const noise1D = new Simple1DNoise();
+
+        const simMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                uPosition: { value: posTex },
+                uPosRefs: { value: posTex },
+                uRingPos: { value: new THREE.Vector2(0, 0) },
+                uRingRadius: { value: 0.2 },
+                uDeltaTime: { value: 0 },
+                uRingWidth: { value: RING_WIDTH },
+                uRingWidth2: { value: RING_WIDTH2 },
+                uRingDisplacement: { value: RING_DISPLACEMENT },
+                uTime: { value: 0 },
+            },
+            vertexShader: /* glsl */ `
+                void main() {
+                    gl_Position = vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: /* glsl */ `
+                precision highp float;
+                uniform sampler2D uPosition;
+                uniform sampler2D uPosRefs;
+                uniform vec2 uRingPos;
+                uniform float uTime;
+                uniform float uDeltaTime;
+                uniform float uRingRadius;
+                uniform float uRingWidth;
+                uniform float uRingWidth2;
+                uniform float uRingDisplacement;
+
+                ${ANTIGRAVITY_GLSL_NOISE}
+
+                void main() {
+                    vec2 simTexCoords = gl_FragCoord.xy / vec2(${texSize.toFixed(1)}, ${texSize.toFixed(1)});
+                    vec4 pFrame = texture2D(uPosition, simTexCoords);
+
+                    float scale = pFrame.z;
+                    float velocity = pFrame.w;
+                    vec2 refPos = texture2D(uPosRefs, simTexCoords).xy;
+
+                    float time = uTime * 0.5;
+                    vec2 curentPos = refPos;
+
+                    vec2 pos = pFrame.xy;
+                    pos *= 0.8; // Spring damping returning displaced particles to reference position
+
+                    // Mouse / ring vector distance calculation
+                    float dist = distance(curentPos.xy, uRingPos);
+                    float noise0 = snoise(vec3(curentPos.xy * 0.2 + vec2(18.4924, 72.9744), time * 0.5));
+                    float dist1 = distance(curentPos.xy + (noise0 * 0.005), uRingPos);
+
+                    float t = smoothstep(uRingRadius - (uRingWidth * 2.0), uRingRadius, dist) - smoothstep(uRingRadius, uRingRadius + uRingWidth, dist1);
+                    float t2 = smoothstep(uRingRadius - (uRingWidth2 * 2.0), uRingRadius, dist) - smoothstep(uRingRadius, uRingRadius + uRingWidth2, dist1);
+                    float t3 = smoothstep(uRingRadius + uRingWidth2, uRingRadius, dist);
+
+                    t = pow(max(t, 0.0), 2.0);
+                    t2 = pow(max(t2, 0.0), 3.0);
+
+                    t += t2 * 3.0;
+                    t += t3 * 0.4;
+                    t += snoise(vec3(curentPos.xy * 30.0 + vec2(11.4924, 12.9744), time * 0.5)) * t3 * 0.5;
+
+                    float nS = snoise(vec3(curentPos.xy * 2.0 + vec2(18.4924, 72.9744), time * 0.5));
+                    t += pow((nS + 1.5) * 0.5, 2.0) * 0.6;
+
+                    // Mid scale noise
+                    float noise1 = snoise(vec3(curentPos.xy * 4.0 + vec2(88.494, 32.4397), time * 0.35));
+                    float noise2 = snoise(vec3(curentPos.xy * 4.0 + vec2(50.904, 120.947), time * 0.35));
+
+                    // Close scale noise
+                    float noise3 = snoise(vec3(curentPos.xy * 20.0 + vec2(18.4924, 72.9744), time * 0.5));
+                    float noise4 = snoise(vec3(curentPos.xy * 20.0 + vec2(50.904, 120.947), time * 0.5));
+
+                    vec2 disp = vec2(noise1, noise2) * 0.03;
+                    disp += vec2(noise3, noise4) * 0.005;
+
+                    // Harmonic sine wave drift
+                    disp.x += sin((refPos.x * 20.0) + (time * 4.0)) * 0.02 * clamp(dist, 0.0, 1.0);
+                    disp.y += cos((refPos.y * 20.0) + (time * 3.0)) * 0.02 * clamp(dist, 0.0, 1.0);
+
+                    // Radial mouse vector repulsion push away from uRingPos
+                    pos -= (uRingPos - (curentPos + disp)) * pow(t2, 0.75) * uRingDisplacement;
+
+                    // Smooth scale interpolation
+                    float scaleDiff = t - scale;
+                    scaleDiff *= 0.2;
+                    scale += scaleDiff;
+
+                    // Final displaced position
+                    vec2 finalPos = curentPos + disp + (pos * 0.25);
+
+                    velocity *= 0.5;
+                    velocity += scale * 0.25;
+
+                    gl_FragColor = vec4(finalPos, scale, velocity);
+                }
+            `,
+        });
+
+        const simQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), simMaterial);
+        simScene.add(simQuad);
+
+        // 5. Particle Render Geometry & Capsule SDF Fragment Shader
+        // Renders each dot as an oriented rounded capsule (`sdRoundBox(uv, vec2(0.5, 0.2), vec4(0.25))`)
+        // aligned radially with `atan(vLocalPos.y - uRingPos.y, vLocalPos.x - uRingPos.x)`
+        const particleGeometry = new THREE.BufferGeometry();
+        const uvs = new Float32Array(count * 2);
+        const positions = new Float32Array(count * 3);
+        const seeds = new Float32Array(count * 4);
+
+        for (let i = 0; i < count; i++) {
+            const u = (i % texSize) / texSize;
+            const v = Math.floor(i / texSize) / texSize;
+            uvs[i * 2 + 0] = u;
+            uvs[i * 2 + 1] = v;
+
+            seeds[i * 4 + 0] = Math.random();
+            seeds[i * 4 + 1] = Math.random();
+            seeds[i * 4 + 2] = Math.random();
+            seeds[i * 4 + 3] = Math.random();
+        }
+
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        particleGeometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+        particleGeometry.setAttribute('seeds', new THREE.BufferAttribute(seeds, 4));
+
+        const getParticleScale = () =>
+            (renderer.domElement.width / pixelRatio / 2000) * PARTICLES_SCALE;
+
+        const renderMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                uPosition: { value: posTex },
+                uTime: { value: 0 },
+                // Exact dark-theme colors from antigravity.google
+                uColor1: { value: new THREE.Color('#7189ff') },
+                uColor2: { value: new THREE.Color('#3074f9') },
+                uColor3: { value: new THREE.Color('#000000') },
+                uAlpha: { value: 1.0 },
+                uRingPos: { value: new THREE.Vector2(0, 0) },
+                uRez: {
+                    value: new THREE.Vector2(
+                        renderer.domElement.width,
+                        renderer.domElement.height
+                    ),
+                },
+                uParticleScale: { value: getParticleScale() },
+                uPixelRatio: { value: pixelRatio },
+                uColorScheme: { value: COLOR_SCHEME },
+            },
+            vertexShader: /* glsl */ `
+                precision highp float;
+                attribute vec4 seeds;
+
+                uniform sampler2D uPosition;
+                uniform float uTime;
+                uniform float uParticleScale;
+                uniform float uPixelRatio;
+                uniform int uColorScheme;
+
+                varying vec4 vSeeds;
+                varying float vVelocity;
+                varying vec2 vLocalPos;
+                varying vec2 vScreenPos;
+                varying float vScale;
+
+                void main() {
+                    vec4 pos = texture2D(uPosition, uv);
+                    vSeeds = seeds;
+
+                    vVelocity = pos.w;
+                    vScale = pos.z;
+                    vLocalPos = pos.xy;
+                    vec4 viewSpace = modelViewMatrix * vec4(vec3(pos.xy, 0.0), 1.0);
+
+                    gl_Position = projectionMatrix * viewSpace;
+                    vScreenPos = gl_Position.xy;
+
+                    gl_PointSize = ((vScale * 7.0) * (uPixelRatio * 0.5) * uParticleScale);
+                }
+            `,
+            fragmentShader: /* glsl */ `
+                precision highp float;
+
+                varying vec4 vSeeds;
+                varying vec2 vScreenPos;
+                varying vec2 vLocalPos;
+                varying float vScale;
+                varying float vVelocity;
+
+                uniform vec3 uColor1;
+                uniform vec3 uColor2;
+                uniform vec3 uColor3;
+
+                uniform vec2 uRingPos;
+                uniform vec2 uRez;
+
+                uniform float uAlpha;
+                uniform float uTime;
+
+                uniform int uColorScheme;
+
+                ${ANTIGRAVITY_GLSL_NOISE}
+
+                #define PI 3.1415926535897932384626433832795
+
+                float sdRoundBox(in vec2 p, in vec2 b, in vec4 r) {
+                    r.xy = (p.x > 0.0) ? r.xy : r.zw;
+                    r.x  = (p.y > 0.0) ? r.x  : r.y;
+                    vec2 q = abs(p) - b + r.x;
+                    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r.x;
+                }
+
+                vec2 rotate(vec2 v, float a) {
+                    float s = sin(a);
+                    float c = cos(a);
+                    mat2 m = mat2(c, s, -s, c);
+                    return m * v;
+                }
+
+                void main() {
+                    float uBorderSize = 0.2;
+                    float ratio = uRez.x / uRez.y;
+
+                    // Noise-driven angle & tri-color blending
+                    float noiseAngle = snoise(vec3(vLocalPos * 10.0 + vec2(18.4924, 72.9744), uTime * 0.85));
+                    float noiseColor = snoise(vec3(vLocalPos * 2.0 + vec2(74.664, 91.556), uTime * 0.5));
+                    noiseColor = (noiseColor + 1.0) * 0.5;
+
+                    // Radial orientation angle toward cursor ring center (uRingPos)
+                    float angle = atan(vLocalPos.y - uRingPos.y, vLocalPos.x - uRingPos.x);
+
+                    vec2 uv = gl_PointCoord.xy;
+                    uv -= vec2(0.5);
+                    uv.y *= -1.0;
+                    uv = rotate(uv, -angle + (noiseAngle * 0.5));
+
+                    float h = 0.8;
+                    float progress = smoothstep(0.0, 0.75, pow(noiseColor, 2.0));
+                    vec3 col = mix(
+                        mix(uColor1, uColor2, progress / h),
+                        mix(uColor2, uColor3, (progress - h) / (1.0 - h)),
+                        step(h, progress)
+                    );
+                    vec3 color = col;
+
+                    // Rounded capsule SDF shape
+                    float rounded = sdRoundBox(uv, vec2(0.5, 0.2), vec4(0.25));
+                    rounded = smoothstep(0.1, 0.0, rounded);
+
+                    float a = uAlpha * rounded * smoothstep(0.1, 0.2, vScale);
+
+                    if (a < 0.01) {
+                        discard;
+                    }
+
+                    color = clamp(color, 0.0, 1.0);
+                    color = mix(color, color * clamp(vVelocity, 0.0, 1.0), float(uColorScheme));
+
+                    gl_FragColor = vec4(color, clamp(a, 0.0, 1.0));
+                }
+            `,
+            transparent: true,
+            depthTest: false,
+            depthWrite: false,
+        });
+
+        const pointsMesh = new THREE.Points(particleGeometry, renderMaterial);
+        pointsMesh.position.set(0, 0, 0);
+        pointsMesh.scale.set(5, 5, 5);
+        scene.add(pointsMesh);
+
+        // 6. Mouse & Resize Event Listeners
+        const handleMouseMove = (e: MouseEvent) => {
+            cursorScreen.x = e.clientX;
+            cursorScreen.y = e.clientY;
+            hasMoved = true;
+        };
 
         const handleResize = () => {
-            if (!canvas) return;
-            const dpr = Math.min(window.devicePixelRatio || 1, 2);
-            width = window.innerWidth;
-            height = window.innerHeight;
-            canvas.width = width * dpr;
-            canvas.height = height * dpr;
-            canvas.style.width = `${width}px`;
-            canvas.style.height = `${height}px`;
-            ctx.scale(dpr, dpr);
-        };
-
-        handleResize();
-        window.addEventListener('resize', handleResize);
-
-        const noise2D = createAntigravityNoise();
-
-        // Gravitational ring center & mouse tracking state
-        let targetX = width * 0.5;
-        let targetY = height * 0.44;
-        let ringX = targetX;
-        let ringY = targetY;
-        let isMouseActive = false;
-
-        const handleMouseMove = (e: MouseEvent) => {
-            targetX = e.clientX;
-            targetY = e.clientY;
-            isMouseActive = true;
-        };
-
-        window.addEventListener('mousemove', handleMouseMove);
-
-        // 1. Generate Ambient Antigravity Field Particles (Hexagonal/organic field distribution)
-        const fieldParticles: FieldParticle[] = [];
-        const cols = 16;
-        const rows = 10;
-        const totalField = cols * rows;
-
-        for (let i = 0; i < totalField; i++) {
-            const col = i % cols;
-            const row = Math.floor(i / cols);
-
-            // Jittered grid positions across viewport
-            const jitterX = (Math.random() - 0.5) * 0.05;
-            const jitterY = (Math.random() - 0.5) * 0.06;
-            const baseX = (col + 0.5) / cols + jitterX;
-            const baseY = (row + 0.5) / rows + jitterY;
-
-            const initialX = baseX * width;
-            const initialY = baseY * height;
-
-            fieldParticles.push({
-                baseX,
-                baseY,
-                x: initialX,
-                y: initialY,
-                prevX: initialX,
-                prevY: initialY,
-                size: Math.random() < 0.15 ? Math.random() * 0.4 + 1.2 : Math.random() * 0.4 + 0.75,
-                color: COLOR_SWATCHES[i % COLOR_SWATCHES.length],
-                alpha: Math.random() * 0.25 + 0.35,
-                seed: Math.random() * 100,
-                scale: 0.2,
-                velocity: 0,
-            });
-        }
-
-        // 2. Generate Focused Orbital Satellites circling the Antigravity core
-        const orbitalSatellites: OrbitalSatellite[] = [];
-        const orbitalCount = 42;
-
-        for (let i = 0; i < orbitalCount; i++) {
-            const shell = i % 4;
-            const minR = 34 + shell * 22;
-            const maxR = minR + 20;
-            const orbitRadius = Math.random() * (maxR - minR) + minR;
-
-            // Slower, elegant orbital velocities with dual spin directions
-            const speed = (Math.random() * 0.7 + 0.5) * (shell % 2 === 0 ? 1 : -1);
-            const initialAngle = Math.random() * Math.PI * 2;
-            const initialX = ringX + Math.cos(initialAngle) * orbitRadius;
-            const initialY = ringY + Math.sin(initialAngle) * orbitRadius;
-
-            orbitalSatellites.push({
-                angle: initialAngle,
-                speed,
-                orbitRadius,
-                radiusVariation: Math.random() * 14 + 6,
-                size: Math.random() < 0.2 ? Math.random() * 0.4 + 1.2 : Math.random() * 0.4 + 0.8,
-                color: COLOR_SWATCHES[i % COLOR_SWATCHES.length],
-                alpha: Math.random() * 0.3 + 0.45,
-                pulsePhase: Math.random() * Math.PI * 2,
-                pulseSpeed: Math.random() * 0.03 + 0.015,
-                x: initialX,
-                y: initialY,
-                prevX: initialX,
-                prevY: initialY,
-                trailDelay: Math.random() * 0.08 + 0.14,
-            });
-        }
-
-        let time = 0;
-
-        // ── Main Simulation Loop Matching Google Antigravity Shaders ──
-        const render = () => {
-            time += 0.014;
-            ctx.clearRect(0, 0, width, height);
-
-            // Remotion-like spring follow for gravitational ring center
-            const springStiffness = isMouseActive ? 0.08 : 0.025;
-            ringX += (targetX - ringX) * springStiffness;
-            ringY += (targetY - ringY) * springStiffness;
-
-            // Natural floating idle sway when mouse is stationary
-            const idleDriftX = Math.sin(time * 0.8) * 12 + Math.cos(time * 1.6) * 6;
-            const idleDriftY = Math.cos(time * 0.7) * 8 + Math.sin(time * 1.4) * 5;
-            const currentCoreX = ringX + idleDriftX;
-            const currentCoreY = ringY + idleDriftY;
-
-            // ── Exact Antigravity Ring Parameters ──
-            // uRingRadius = 0.175 + sin(time * 1.0) * 0.03 + cos(time * 3.0) * 0.02
-            const maxDim = Math.max(width, height);
-            const normRingRadius = 0.18 + Math.sin(time * 1.0) * 0.035 + Math.cos(time * 2.8) * 0.02;
-            const pixelRingRadius = normRingRadius * maxDim;
-            const pixelRingWidth = 0.012 * maxDim;
-            const pixelRingWidth2 = 0.09 * maxDim;
-            const ringDisplacement = 0.55;
-
-            // Soft radial gravitational glow centered on ring
-            const haloGrad = ctx.createRadialGradient(
-                currentCoreX, currentCoreY, 0,
-                currentCoreX, currentCoreY, pixelRingRadius * 1.3
+            if (!container) return;
+            width = container.offsetWidth || window.innerWidth;
+            height = container.offsetHeight || window.innerHeight;
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderMaterial.uniforms.uRez.value.set(
+                renderer.domElement.width,
+                renderer.domElement.height
             );
-            haloGrad.addColorStop(0, 'rgba(49, 134, 255, 0.09)');
-            haloGrad.addColorStop(0.35, 'rgba(113, 137, 255, 0.04)');
-            haloGrad.addColorStop(0.8, 'rgba(252, 65, 61, 0.015)');
-            haloGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            ctx.fillStyle = haloGrad;
-            ctx.beginPath();
-            ctx.arc(currentCoreX, currentCoreY, pixelRingRadius * 1.3, 0, Math.PI * 2);
-            ctx.fill();
-
-            // ── Pass 1: Render Field Particles with Warp Shockwave & Capsule Rotation ──
-            for (let i = 0; i < fieldParticles.length; i++) {
-                const p = fieldParticles[i];
-
-                const refX = p.baseX * width;
-                const refY = p.baseY * height;
-
-                // 1. Distance from expanding warp ring
-                const dx = refX - currentCoreX;
-                const dy = refY - currentCoreY;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                // 2. Multi-scale noise displacement (Shader match)
-                const noise1 = noise2D(p.baseX * 4.0 + 88.494, p.baseY * 4.0 + time * 0.35);
-                const noise2 = noise2D(p.baseX * 4.0 + 50.904, p.baseY * 4.0 + time * 0.35);
-                const noise3 = noise2D(p.baseX * 18.0 + 18.492, p.baseY * 18.0 + time * 0.5);
-                const noise4 = noise2D(p.baseX * 18.0 + 50.904, p.baseY * 18.0 + time * 0.5);
-
-                let dispX = (noise1 * 0.03 + noise3 * 0.006) * width;
-                let dispY = (noise2 * 0.03 + noise4 * 0.006) * height;
-
-                // Harmonic sine drift
-                const distClamp = Math.min(1, Math.max(0, dist / (maxDim * 0.5)));
-                dispX += Math.sin(p.baseX * 20.0 + time * 3.5) * 14 * distClamp;
-                dispY += Math.cos(p.baseY * 20.0 + time * 2.8) * 14 * distClamp;
-
-                // 3. Shockwave impulse from ring wave:
-                // float t = smoothstep(uRingRadius - uRingWidth*2, uRingRadius, dist) - smoothstep(uRingRadius, uRingRadius + uRingWidth, dist)
-                const tWave =
-                    smoothstep(pixelRingRadius - pixelRingWidth * 2, pixelRingRadius, dist) -
-                    smoothstep(pixelRingRadius, pixelRingRadius + pixelRingWidth, dist);
-                const tWave2 =
-                    smoothstep(pixelRingRadius - pixelRingWidth2 * 2, pixelRingRadius, dist) -
-                    smoothstep(pixelRingRadius, pixelRingRadius + pixelRingWidth2, dist);
-
-                const waveScale = Math.pow(Math.max(0, tWave), 2) + Math.pow(Math.max(0, tWave2), 3) * 2.8;
-
-                // Radial shockwave push/pull
-                const ringPush = Math.pow(Math.max(0, tWave2), 0.75) * ringDisplacement * 45;
-                const pushAngle = Math.atan2(dy, dx);
-                const pushX = Math.cos(pushAngle) * ringPush;
-                const pushY = Math.sin(pushAngle) * ringPush;
-
-                const targetWorldX = refX + dispX + pushX;
-                const targetWorldY = refY + dispY + pushY;
-
-                // Smooth momentum interpolation
-                p.prevX = p.x;
-                p.prevY = p.y;
-                p.x += (targetWorldX - p.x) * 0.12;
-                p.y += (targetWorldY - p.y) * 0.12;
-
-                const curVx = p.x - p.prevX;
-                const curVy = p.y - p.prevY;
-                const speedMag = Math.sqrt(curVx * curVx + curVy * curVy);
-
-                // 4. Orientation: align capsule radially + local turbulence
-                const baseAngle = Math.atan2(p.y - currentCoreY, p.x - currentCoreX);
-                const noiseAngle = noise2D(p.baseX * 10.0, p.baseY * 10.0 + time * 0.85);
-                const rotation = baseAngle + noiseAngle * 0.45;
-
-                // 5. Dynamic scale & capsule elongation (refined, delicate starlight scale)
-                p.scale += (waveScale - p.scale) * 0.18;
-                const stretch = Math.min(1.7, 1.0 + speedMag * 0.16 + waveScale * 0.35);
-                const rx = p.size * (1 + p.scale * 0.25) * stretch;
-                const ry = p.size * (1 + p.scale * 0.15);
-
-                // 6. Tri-color blend based on local noise and ring wave
-                const noiseColorVal = (noise2D(p.baseX * 3.0 + 74.6, p.baseY * 3.0 + time * 0.4) + 1) * 0.5;
-                const colorProg = Math.max(0, Math.min(1, Math.pow(noiseColorVal, 1.8) + waveScale * 0.35));
-                const activeColor = interpolateTriColor(colorProg);
-
-                const finalAlpha = Math.max(0.15, Math.min(0.85, p.alpha + waveScale * 0.35));
-
-                // Draw oriented capsule
-                ctx.save();
-                ctx.translate(p.x, p.y);
-                ctx.rotate(rotation);
-
-                ctx.shadowColor = activeColor;
-                ctx.shadowBlur = waveScale > 0.3 ? 5 : 2;
-                ctx.fillStyle = activeColor;
-                ctx.globalAlpha = finalAlpha;
-
-                ctx.beginPath();
-                ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Gentle starlight glint for particles undergoing high wave displacement
-                if (waveScale > 0.4) {
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.globalAlpha = finalAlpha * 0.6;
-                    ctx.beginPath();
-                    ctx.ellipse(0, 0, rx * 0.45, ry * 0.45, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-
-                ctx.restore();
-            }
-
-            // ── Pass 2: Render High-Speed Orbital Satellites around Gravity Core ──
-            for (let i = 0; i < orbitalSatellites.length; i++) {
-                const s = orbitalSatellites[i];
-
-                // Advance orbit
-                s.angle += s.speed * 0.016;
-
-                // Breathing variation + local swirl turbulence
-                const swirlNoise = noise2D(
-                    Math.cos(s.angle) * 1.5 + time * 0.35,
-                    Math.sin(s.angle) * 1.5 + i * 0.15
-                );
-                const currentRadius =
-                    s.orbitRadius +
-                    Math.sin(time * 2.2 + s.pulsePhase) * s.radiusVariation +
-                    swirlNoise * 14;
-
-                const destX = currentCoreX + Math.cos(s.angle) * currentRadius;
-                const destY = currentCoreY + Math.sin(s.angle) * currentRadius;
-
-                // Inertial fluid trail
-                s.prevX = s.x;
-                s.prevY = s.y;
-                s.x += (destX - s.x) * s.trailDelay;
-                s.y += (destY - s.y) * s.trailDelay;
-
-                const svx = s.x - s.prevX;
-                const svy = s.y - s.prevY;
-                const sSpeed = Math.sqrt(svx * svx + svy * svy);
-                const flowAngle = Math.atan2(svy, svx);
-
-                s.pulsePhase += s.pulseSpeed;
-                const pulseA = s.alpha + Math.sin(s.pulsePhase) * 0.12;
-                const finalA = Math.max(0.2, Math.min(0.85, pulseA));
-
-                const stretch = Math.min(1.7, 1.0 + sSpeed * 0.16);
-                const srx = s.size * stretch;
-                const sry = s.size;
-
-                ctx.save();
-                ctx.translate(s.x, s.y);
-                ctx.rotate(flowAngle);
-
-                ctx.shadowColor = s.color;
-                ctx.shadowBlur = sSpeed > 1.5 ? 6 : 3;
-                ctx.fillStyle = s.color;
-                ctx.globalAlpha = finalA;
-
-                ctx.beginPath();
-                ctx.ellipse(0, 0, srx, sry, 0, 0, Math.PI * 2);
-                ctx.fill();
-
-                if (s.size > 1.3) {
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.globalAlpha = finalA * 0.45;
-                    ctx.beginPath();
-                    ctx.ellipse(0, 0, srx * 0.4, sry * 0.4, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-
-                ctx.restore();
-            }
-
-            animationFrameId = requestAnimationFrame(render);
+            renderMaterial.uniforms.uPixelRatio.value = pixelRatio;
         };
 
-        render();
+        window.addEventListener('mousemove', handleMouseMove, { passive: true });
+        window.addEventListener('resize', handleResize, { passive: true });
+
+        // 7. Animation Loop (Exact antigravity.google update + ping-pong render cycle)
+        const clock = new THREE.Clock();
+        let lastTime = 0;
+        let everRendered = false;
+        let animationFrameId: number;
+
+        const animate = () => {
+            animationFrameId = requestAnimationFrame(animate);
+
+            const elapsed = clock.getElapsedTime();
+            const dt = Math.min(0.1, Math.max(0, elapsed - lastTime));
+            lastTime = elapsed;
+
+            // Project 2D mouse coordinates onto the 3D raycast plane
+            if (hasMoved && width > 0 && height > 0) {
+                mouseNDC.x = (cursorScreen.x / width) * 2 - 1;
+                mouseNDC.y = -(cursorScreen.y / height) * 2 + 1;
+
+                if (
+                    mouseNDC.x >= -1 &&
+                    mouseNDC.x <= 1 &&
+                    mouseNDC.y >= -1 &&
+                    mouseNDC.y <= 1
+                ) {
+                    raycaster.setFromCamera(mouseNDC, camera);
+                    const hits = raycaster.intersectObject(raycastPlane);
+                    if (hits.length > 0) {
+                        intersectionPoint.copy(hits[0].point);
+                        isIntersecting = true;
+                    } else {
+                        isIntersecting = false;
+                    }
+                } else {
+                    isIntersecting = false;
+                }
+            }
+
+            // Organic 1D value-noise drift + spring cursor following (0.02 active / 0.01 idle)
+            const n = (noise1D.getVal(elapsed * 0.66 + 94.234) - 0.5) * 2;
+            const r = (noise1D.getVal(elapsed * 0.75 + 21.028) - 0.5) * 2;
+
+            if (isIntersecting) {
+                cursorPos.set(
+                    intersectionPoint.x * 0.175 + n * 0.1,
+                    intersectionPoint.y * 0.175 + r * 0.1
+                );
+                ringPos.set(
+                    ringPos.x + (cursorPos.x - ringPos.x) * 0.02,
+                    ringPos.y + (cursorPos.y - ringPos.y) * 0.02
+                );
+            } else {
+                cursorPos.set(n * 0.2, r * 0.1);
+                ringPos.set(
+                    ringPos.x + (cursorPos.x - ringPos.x) * 0.01,
+                    ringPos.y + (cursorPos.y - ringPos.y) * 0.01
+                );
+            }
+
+            const particleScale = getParticleScale();
+
+            // Step 1: GPGPU Simulation Pass into rt2
+            simMaterial.uniforms.uPosition.value = everRendered ? rt1.texture : posTex;
+            simMaterial.uniforms.uTime.value = elapsed;
+            simMaterial.uniforms.uDeltaTime.value = dt;
+            simMaterial.uniforms.uRingRadius.value =
+                0.175 + Math.sin(elapsed * 1.0) * 0.03 + Math.cos(elapsed * 3.0) * 0.02;
+            simMaterial.uniforms.uRingPos.value.copy(ringPos);
+
+            renderer.setRenderTarget(rt2);
+            renderer.render(simScene, simCamera);
+            renderer.setRenderTarget(null);
+
+            // Step 2: Render Particle Capsules to Screen
+            renderMaterial.uniforms.uPosition.value = everRendered ? rt2.texture : posTex;
+            renderMaterial.uniforms.uTime.value = elapsed;
+            renderMaterial.uniforms.uRingPos.value.copy(ringPos);
+            renderMaterial.uniforms.uParticleScale.value = particleScale;
+
+            renderer.clear();
+            renderer.render(scene, camera);
+
+            // Step 3: Swap Ping-Pong Render Targets
+            const temp = rt1;
+            rt1 = rt2;
+            rt2 = temp;
+            everRendered = true;
+        };
+
+        animationFrameId = requestAnimationFrame(animate);
 
         return () => {
             cancelAnimationFrame(animationFrameId);
-            window.removeEventListener('resize', handleResize);
             window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('resize', handleResize);
+            particleGeometry.dispose();
+            renderMaterial.dispose();
+            simQuad.geometry.dispose();
+            simMaterial.dispose();
+            raycastPlane.geometry.dispose();
+            (raycastPlane.material as THREE.Material).dispose();
+            rt1.dispose();
+            rt2.dispose();
+            posTex.dispose();
+            renderer.dispose();
+            if (renderer.domElement.parentElement === container) {
+                container.removeChild(renderer.domElement);
+            }
         };
     }, []);
 
@@ -650,14 +782,14 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
                 isExiting ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
             } ${manualDismiss ? 'cursor-pointer' : ''}`}
         >
-            {/* ── Antigravity Warp Canvas: Expanding Shockwave Field + Orbital Satellites ── */}
-            <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-20" />
+            {/* ── Exact antigravity.google WebGL GPGPU Particle Field ── */}
+            <div ref={mountRef} className="absolute inset-0 pointer-events-none z-20" />
 
             {/* ── Ambient Antigravity Nebula Atmosphere ── */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] bg-gradient-to-tr from-[#3186FF]/12 via-[#7189FF]/8 to-transparent rounded-full blur-[140px] pointer-events-none z-0" />
 
             {/* ── Central SignalMap Hero Branding Container ── */}
-            <div className="relative z-10 flex flex-col items-center max-w-lg px-6 text-center animate-fade-in pointer-events-auto">
+            <div className="relative z-30 flex flex-col items-center max-w-lg px-6 text-center animate-fade-in pointer-events-auto">
                 {/* Precision Aerospace Logo Holographic Card */}
                 <div className="relative flex items-center justify-center mb-7">
                     {/* Outer Rotating Dashed Gravitational Ring */}
@@ -669,7 +801,7 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
                     {/* Concentric Pulsing Radar Blip Wave */}
                     <span className="absolute w-52 h-52 rounded-full bg-[#7189FF]/10 animate-ping pointer-events-none" />
 
-                    {/* Central Holographic Keycard Emblem (vgpu.sh holographic card shader effect) */}
+                    {/* Central Holographic Keycard Emblem */}
                     <HolographicCardLogo onCardClick={manualDismiss ? handleDismiss : undefined} />
                 </div>
 
@@ -677,7 +809,10 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
                 <div className="flex flex-col items-center gap-1.5 mb-6">
                     <div className="flex items-center gap-2">
                         <h1 className="text-3xl md:text-4xl font-extrabold tracking-[0.22em] font-mono uppercase text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.25)]">
-                            SIGNAL<span className="bg-gradient-to-r from-[#7189FF] via-[#8AB4F8] to-[#00B95C] bg-clip-text text-transparent">MAP</span>
+                            SIGNAL
+                            <span className="bg-gradient-to-r from-[#7189FF] via-[#8AB4F8] to-[#00B95C] bg-clip-text text-transparent">
+                                MAP
+                            </span>
                         </h1>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#3186FF]/20 border border-[#7189FF]/40 text-[#8AB4F8] shadow-sm">
                             v4.8-aero
@@ -688,14 +823,13 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
                     </p>
                 </div>
 
-                {/* Precision Progress Track with Remotion Easing */}
+                {/* Precision Progress Track */}
                 <div className="w-64 md:w-80 flex flex-col gap-2.5 mb-5">
                     <div className="relative w-full h-1.5 rounded-full bg-slate-800/80 overflow-hidden border border-slate-700/60 p-[1px]">
                         <div
                             className="h-full rounded-full bg-gradient-to-r from-[#3186FF] via-[#7189FF] to-[#00B95C] transition-all duration-75 ease-linear shadow-[0_0_18px_rgba(113,137,255,0.9)] relative"
                             style={{ width: `${progress}%` }}
                         >
-                            {/* High-speed scanline shimmer */}
                             <div className="absolute inset-0 bg-white/40 animate-pulse" />
                         </div>
                     </div>
