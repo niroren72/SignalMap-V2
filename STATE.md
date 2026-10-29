@@ -7,6 +7,7 @@
 ---
 
 ## 🎯 Current Focus & Objectives
+
 - **Active Project**: SignalMap (`signalmap/`)
 - **Key Modules**:
   - `agent/`: Python daemon (FastAPI, WebSockets, `psutil`, GeoIP2, `aiosqlite`, enrichment pipeline)
@@ -16,6 +17,7 @@
 ---
 
 ## 🛠️ Active & Recently Touched Files
+
 - `signalmap/web/src/components/ConnectionTable.tsx`, `LiveConnectionTable.tsx`, & `signalmap/web/src/stores/connectionStore.ts` (Added `DATA SOURCE` column with badge styling, sorting, and search/filtering by collector source)
 - `signalmap/web/src/components/LoadingScreen.tsx` & `HolographicCardLogo.tsx` & `Header.tsx` (Cleaned up logo card frame, removed glowing circles/rings, removed v4.8-aero & READY // CLICK... prompts)
 - `signalmap/agent/collectors/socket_collector.py` (Socket polling & process mapping)
@@ -26,6 +28,7 @@
 ---
 
 ## 🚦 System Status & Verification
+
 - **Git Working Tree**: Root repository (`Antigravity DevEX/.git`) tracking `signalmap/`, `.agents/`, `AGENTS.md`, and `STATE.md` (remote: `origin/main` on `SignalMap-V2.git`)
 - **Backend**: Ready (`python start.py --backend-only` or via unified launcher)
 - **Frontend**: Vite dev server configured on `:5173`, production bundle served on `:8765`
@@ -34,6 +37,7 @@
 ---
 
 ## 📋 Immediate Next Steps
+
 1. Wait for user instruction on current task (feature, bugfix, or refactor).
 2. If new feature or architectural design is introduced, trigger `grill-me` interview rounds first.
 3. Update this state file after every significant code edit or task completion.
@@ -41,6 +45,7 @@
 ---
 
 ## 💡 Quick Launch & Test Commands
+
 ```bash
 # Unified dev launch (FastAPI + Vite)
 python signalmap/start.py
