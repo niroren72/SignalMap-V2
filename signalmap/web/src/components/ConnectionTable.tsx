@@ -2,7 +2,8 @@ import { useMemo, useState, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useConnectionStore } from '../stores/connectionStore';
 import type { ConnectionEvent } from '@shared/types';
-import { Search, X, ChevronUp, ChevronDown, Download } from 'lucide-react';
+import { Search, X, ChevronUp, ChevronDown, ChevronRight, Download, GitBranch } from 'lucide-react';
+import { groupNestedEvents, matchesModule, normalizeEventGeoToOrigin } from '../utils/nestedConnections';
 
 export interface DataSourceMeta {
     id: string;
@@ -143,6 +144,14 @@ export function getDataSourceMeta(e: ConnectionEvent): DataSourceMeta {
                 icon: '🌐',
                 badgeClass: 'bg-indigo-950/60 border-indigo-500/35 text-indigo-300',
             };
+        case 'okta':
+            return {
+                id: 'okta',
+                label: 'Okta SystemLog',
+                sublabel: 'okta_sso',
+                icon: '🔑',
+                badgeClass: 'bg-emerald-950/60 border-emerald-500/35 text-emerald-300',
+            };
         case 'mock_generator':
         case 'mock':
             return {
@@ -176,90 +185,86 @@ export function ConnectionTable() {
         playbackTime,
         isLive,
         activeModule,
+        originGeo,
     } = useConnectionStore();
 
     const [tableSearch, setTableSearch] = useState('');
     const [copiedIp, setCopiedIp] = useState<string | null>(null);
+    const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+    const toggleGroup = (groupKey: string, ev: React.MouseEvent) => {
+        ev.stopPropagation();
+        setExpandedGroups((prev) => ({ ...prev, [groupKey]: !prev[groupKey] }));
+    };
 
     // Filter events based on active filters, timeline, and table search
     const filteredEvents = useMemo(() => {
-        return events.filter((e) => {
-            if (activeModule && activeModule !== 'all') {
-                const collector = e.source_collector || 'psutil_sockets';
-                const plugin = (e as { source_plugin?: string }).source_plugin || (
-                    collector === 'psutil_sockets' ||
-                    collector === 'windows_udp' ||
-                    collector === 'windows_dns' ||
-                    collector === 'windows_evtx' ||
-                    collector === 'socket' ||
-                    collector === 'netstat'
-                        ? 'windows'
-                        : collector.startsWith('salesforce')
-                        ? 'salesforce'
-                        : collector
-                );
-                if (plugin !== activeModule) return false;
-            }
+        return events
+            .filter((e) => {
+                if (!matchesModule(e, activeModule)) return false;
 
-            // Timeline scrubber filter
-            if (!isLive && playbackTime !== null) {
-                const eventTime = e.metrics?.last_seen || e.metrics?.first_seen;
-                if (eventTime && new Date(eventTime).getTime() > playbackTime) {
-                    return false;
+                // Timeline scrubber filter
+                if (!isLive && playbackTime !== null) {
+                    const eventTime = e.metrics?.last_seen || e.metrics?.first_seen;
+                    if (eventTime && new Date(eventTime).getTime() > playbackTime) {
+                        return false;
+                    }
                 }
-            }
 
-            // Global FilterBar filters
-            if (filters.protocol && e.protocol !== filters.protocol) return false;
-            if (filters.direction && e.direction !== filters.direction) return false;
-            if (filters.category && e.service?.category !== filters.category) return false;
-            if (filters.source && getDataSourceMeta(e).id !== filters.source && e.source_collector !== filters.source) return false;
-            if (filters.anomalyOnly && !e.anomaly?.is_anomaly) return false;
-            if (filters.severity && e.anomaly?.severity !== filters.severity) return false;
+                // Global FilterBar filters
+                if (filters.protocol && e.protocol !== filters.protocol) return false;
+                if (filters.direction && e.direction !== filters.direction) return false;
+                if (filters.category && e.service?.category !== filters.category) return false;
+                if (filters.source && getDataSourceMeta(e).id !== filters.source && e.source_collector !== filters.source) return false;
+                if (filters.anomalyOnly && !e.anomaly?.is_anomaly) return false;
+                if (filters.severity && e.anomaly?.severity !== filters.severity) return false;
 
-            const sourceMeta = getDataSourceMeta(e);
+                const sourceMeta = getDataSourceMeta(e);
 
-            // Global search query
-            if (searchQuery) {
-                const q = searchQuery.toLowerCase();
-                const matchGlobal =
-                    e.local?.process_name?.toLowerCase().includes(q) ||
-                    e.local?.user?.toLowerCase().includes(q) ||
-                    e.remote?.ip?.toLowerCase().includes(q) ||
-                    e.remote?.hostname?.toLowerCase().includes(q) ||
-                    e.service?.name?.toLowerCase().includes(q) ||
-                    e.geo?.city?.toLowerCase().includes(q) ||
-                    e.geo?.country?.toLowerCase().includes(q) ||
-                    e.asn?.org?.toLowerCase().includes(q) ||
-                    sourceMeta.label.toLowerCase().includes(q) ||
-                    sourceMeta.sublabel.toLowerCase().includes(q);
-                if (!matchGlobal) return false;
-            }
+                // Global search query
+                if (searchQuery) {
+                    const q = searchQuery.toLowerCase();
+                    const matchGlobal =
+                        e.local?.process_name?.toLowerCase().includes(q) ||
+                        e.local?.user?.toLowerCase().includes(q) ||
+                        e.remote?.ip?.toLowerCase().includes(q) ||
+                        e.remote?.hostname?.toLowerCase().includes(q) ||
+                        e.service?.name?.toLowerCase().includes(q) ||
+                        e.geo?.city?.toLowerCase().includes(q) ||
+                        e.geo?.country?.toLowerCase().includes(q) ||
+                        e.asn?.org?.toLowerCase().includes(q) ||
+                        e.direction?.toLowerCase().includes(q) ||
+                        sourceMeta.label.toLowerCase().includes(q) ||
+                        sourceMeta.sublabel.toLowerCase().includes(q);
+                    if (!matchGlobal) return false;
+                }
 
-            // Table-specific search
-            if (tableSearch) {
-                const tq = tableSearch.toLowerCase();
-                const matchTable =
-                    e.local?.process_name?.toLowerCase().includes(tq) ||
-                    e.local?.user?.toLowerCase().includes(tq) ||
-                    e.remote?.ip?.toLowerCase().includes(tq) ||
-                    e.remote?.hostname?.toLowerCase().includes(tq) ||
-                    e.service?.name?.toLowerCase().includes(tq) ||
-                    e.protocol?.toLowerCase().includes(tq) ||
-                    e.geo?.country?.toLowerCase().includes(tq) ||
-                    e.geo?.city?.toLowerCase().includes(tq) ||
-                    e.asn?.org?.toLowerCase().includes(tq) ||
-                    sourceMeta.label.toLowerCase().includes(tq) ||
-                    sourceMeta.sublabel.toLowerCase().includes(tq) ||
-                    e.anomaly?.title?.toLowerCase().includes(tq) ||
-                    e.anomaly?.description?.toLowerCase().includes(tq) ||
-                    e.anomaly?.tags?.some((t) => t.toLowerCase().includes(tq));
-                if (!matchTable) return false;
-            }
+                // Table-specific search
+                if (tableSearch) {
+                    const tq = tableSearch.toLowerCase();
+                    const matchTable =
+                        e.local?.process_name?.toLowerCase().includes(tq) ||
+                        e.local?.user?.toLowerCase().includes(tq) ||
+                        e.remote?.ip?.toLowerCase().includes(tq) ||
+                        e.remote?.hostname?.toLowerCase().includes(tq) ||
+                        e.service?.name?.toLowerCase().includes(tq) ||
+                        e.protocol?.toLowerCase().includes(tq) ||
+                        e.direction?.toLowerCase().includes(tq) ||
+                        e.geo?.country?.toLowerCase().includes(tq) ||
+                        e.geo?.city?.toLowerCase().includes(tq) ||
+                        e.asn?.org?.toLowerCase().includes(tq) ||
+                        sourceMeta.label.toLowerCase().includes(tq) ||
+                        sourceMeta.sublabel.toLowerCase().includes(tq) ||
+                        e.anomaly?.title?.toLowerCase().includes(tq) ||
+                        e.anomaly?.description?.toLowerCase().includes(tq) ||
+                        e.anomaly?.tags?.some((t) => t.toLowerCase().includes(tq));
+                    if (!matchTable) return false;
+                }
 
-            return true;
-        });
-    }, [events, filters, searchQuery, tableSearch, isLive, playbackTime, activeModule]);
+                return true;
+            })
+            .map((e) => normalizeEventGeoToOrigin(e, originGeo));
+    }, [events, filters, searchQuery, tableSearch, isLive, playbackTime, activeModule, originGeo]);
 
     // Sort events
     const sortedEvents = useMemo(() => {
@@ -285,6 +290,9 @@ export function ConnectionTable() {
                 }
                 case 'protocol': {
                     return (a.protocol || '').localeCompare(b.protocol || '') * dir;
+                }
+                case 'direction': {
+                    return (a.direction || 'outbound').localeCompare(b.direction || 'outbound') * dir;
                 }
                 case 'remote_ip': {
                     return (a.remote?.ip || '').localeCompare(b.remote?.ip || '') * dir;
@@ -313,6 +321,57 @@ export function ConnectionTable() {
 
         return sorted;
     }, [filteredEvents, tableSortField, tableSortDirection]);
+
+    // Group nested connections and build flattened virtualized rows
+    const groupedRows = useMemo(() => groupNestedEvents(sortedEvents), [sortedEvents]);
+    const totalNestedChildrenCount = useMemo(
+        () => groupedRows.reduce((sum, g) => sum + g.children.length, 0),
+        [groupedRows]
+    );
+
+    const displayRows = useMemo(() => {
+        const list: Array<{
+            event: ConnectionEvent;
+            groupKey: string;
+            isChild: boolean;
+            childIndex?: number;
+            nestedCount: number;
+            isExpanded: boolean;
+            totalBytesIn: number;
+            totalBytesOut: number;
+            hasChildAnomaly: boolean;
+        }> = [];
+
+        for (const g of groupedRows) {
+            const isExpanded = Boolean(expandedGroups[g.groupKey]);
+            list.push({
+                event: g.primary,
+                groupKey: g.groupKey,
+                isChild: false,
+                nestedCount: g.children.length,
+                isExpanded,
+                totalBytesIn: g.totalBytesIn,
+                totalBytesOut: g.totalBytesOut,
+                hasChildAnomaly: g.hasChildAnomaly,
+            });
+            if (isExpanded && g.children.length > 0) {
+                g.children.forEach((child, idx) => {
+                    list.push({
+                        event: child,
+                        groupKey: g.groupKey,
+                        isChild: true,
+                        childIndex: idx + 1,
+                        nestedCount: 0,
+                        isExpanded: false,
+                        totalBytesIn: child.metrics?.bytes_in || 0,
+                        totalBytesOut: child.metrics?.bytes_out || 0,
+                        hasChildAnomaly: false,
+                    });
+                });
+            }
+        }
+        return list;
+    }, [groupedRows, expandedGroups]);
 
     const handleCopyIp = (ip: string, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -345,7 +404,7 @@ export function ConnectionTable() {
     const parentRef = useRef<HTMLDivElement>(null);
 
     const rowVirtualizer = useVirtualizer({
-        count: sortedEvents.length,
+        count: displayRows.length,
         getScrollElement: () => parentRef.current,
         estimateSize: () => 44,
         overscan: 12,
@@ -364,7 +423,7 @@ export function ConnectionTable() {
             {/* Table Control Header Toolbar */}
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-950/90 border-b border-slate-800 shrink-0 select-none">
                 {/* Left: Table Title & Record Counter */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                     <div className="flex items-center gap-2 text-sm font-bold text-slate-100 font-mono">
                         <span className="text-base">📋</span>
                         <span>CONNECTIONS TELEMETRY GRID</span>
@@ -374,6 +433,13 @@ export function ConnectionTable() {
                         <span className="px-2.5 py-0.5 rounded-md bg-cyan-950/80 border border-cyan-500/30 text-cyan-300 font-bold">
                             {sortedEvents.length} / {events.length} Records
                         </span>
+
+                        {totalNestedChildrenCount > 0 && (
+                            <span className="px-2.5 py-0.5 rounded-md bg-indigo-950/80 border border-indigo-500/40 text-indigo-300 font-bold flex items-center gap-1.5">
+                                <GitBranch className="w-3 h-3" />
+                                <span>{totalNestedChildrenCount} Nested Streams</span>
+                            </span>
+                        )}
 
                         {sortedEvents.some((e) => e.anomaly?.is_anomaly) && (
                             <span className="px-2.5 py-0.5 rounded-md bg-rose-500/20 border border-rose-500/40 text-rose-300 font-bold flex items-center gap-1.5 animate-pulse">
@@ -478,6 +544,15 @@ export function ConnectionTable() {
                                     {tableSortField === 'protocol' && (tableSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                                 </span>
                             </th>
+                            <th
+                                onClick={() => setTableSort('direction')}
+                                className="px-3.5 py-2.5 cursor-pointer hover:text-cyan-400 transition whitespace-nowrap"
+                            >
+                                <span className="inline-flex items-center gap-1">
+                                    DIRECTION
+                                    {tableSortField === 'direction' && (tableSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                                </span>
+                            </th>
                             <th className="px-3.5 py-2.5 whitespace-nowrap">LOCAL SOCKET</th>
                             <th
                                 onClick={() => setTableSort('remote_ip')}
@@ -523,9 +598,9 @@ export function ConnectionTable() {
 
                     {/* Table Body */}
                     <tbody className="divide-y divide-slate-800/60 font-sans">
-                        {sortedEvents.length === 0 ? (
+                        {displayRows.length === 0 ? (
                             <tr>
-                                <td colSpan={13} className="px-6 py-16 text-center text-slate-500 font-mono text-sm">
+                                <td colSpan={14} className="px-6 py-16 text-center text-slate-500 font-mono text-sm">
                                     No connection records matching the selected filters.
                                 </td>
                             </tr>
@@ -533,11 +608,12 @@ export function ConnectionTable() {
                             <>
                                 {paddingTop > 0 && (
                                     <tr>
-                                        <td style={{ height: `${paddingTop}px` }} colSpan={13} />
+                                        <td style={{ height: `${paddingTop}px` }} colSpan={14} />
                                     </tr>
                                 )}
                                 {virtualRows.map((virtualRow) => {
-                                    const e = sortedEvents[virtualRow.index];
+                                    const rowItem = displayRows[virtualRow.index];
+                                    const e = rowItem.event;
                                     const eventId = e.id || '';
                                     const isSelected = selectedId === eventId;
                                     const isAnomaly = e.anomaly?.is_anomaly;
@@ -545,6 +621,7 @@ export function ConnectionTable() {
                                     const localSocket = `${e.local?.host || '127.0.0.1'}:${e.local?.port || 0}`;
                                     const remoteSocket = `${e.remote?.ip || '0.0.0.0'}:${e.remote?.port || 0}`;
                                     const sourceMeta = getDataSourceMeta(e);
+                                    const isInbound = e.direction === 'inbound';
 
                                     return (
                                         <tr
@@ -555,6 +632,8 @@ export function ConnectionTable() {
                                             className={`cursor-pointer transition-colors ${
                                                 isSelected
                                                     ? 'bg-cyan-950/70 border-l-2 border-cyan-400'
+                                                    : rowItem.isChild
+                                                    ? 'bg-indigo-950/20 hover:bg-indigo-950/35 border-l-2 border-indigo-400/50'
                                                     : isAnomaly
                                                     ? 'bg-rose-950/20 hover:bg-rose-950/35'
                                                     : 'hover:bg-slate-800/50'
@@ -588,9 +667,14 @@ export function ConnectionTable() {
                                             {formatTime(e.metrics?.last_seen || e.metrics?.first_seen)}
                                         </td>
 
-                                        {/* Process / PID / User */}
+                                        {/* Process / PID / User + Nested Connections Expander */}
                                         <td className="px-3.5 py-2.5 whitespace-nowrap">
-                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                            <div className={`flex items-center gap-1.5 flex-wrap ${rowItem.isChild ? 'pl-5' : ''}`}>
+                                                {rowItem.isChild && (
+                                                    <span className="text-[10px] font-mono text-indigo-400 font-bold">
+                                                        ↳ #{rowItem.childIndex}
+                                                    </span>
+                                                )}
                                                 <span className="font-semibold text-slate-200">
                                                     {e.local?.process_name || 'System / Kernel'}
                                                 </span>
@@ -607,6 +691,25 @@ export function ConnectionTable() {
                                                         <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
                                                         {e.local.user}
                                                     </span>
+                                                )}
+                                                {rowItem.nestedCount > 0 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(ev) => toggleGroup(rowItem.groupKey, ev)}
+                                                        className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border transition cursor-pointer ${
+                                                            rowItem.isExpanded
+                                                                ? 'bg-indigo-500/30 text-indigo-200 border-indigo-400/60'
+                                                                : 'bg-indigo-950/80 text-indigo-300 border-indigo-500/40 hover:bg-indigo-900/70'
+                                                        }`}
+                                                        title="Click to expand/collapse nested sub-connections"
+                                                    >
+                                                        {rowItem.isExpanded ? (
+                                                            <ChevronDown className="w-3 h-3" />
+                                                        ) : (
+                                                            <ChevronRight className="w-3 h-3" />
+                                                        )}
+                                                        <span>+{rowItem.nestedCount} nested</span>
+                                                    </button>
                                                 )}
                                             </div>
                                         </td>
@@ -629,6 +732,21 @@ export function ConnectionTable() {
                                             >
                                                 {e.protocol || 'TCP'}
                                             </span>
+                                        </td>
+
+                                        {/* Inbound / Outbound Direction */}
+                                        <td className="px-3.5 py-2.5 whitespace-nowrap">
+                                            {isInbound ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-950/60 border border-amber-500/40 text-amber-300 font-mono text-[10px] font-bold uppercase">
+                                                    <span>↙</span>
+                                                    <span>INBOUND</span>
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 font-mono text-[10px] font-bold uppercase">
+                                                    <span>↗</span>
+                                                    <span>OUTBOUND</span>
+                                                </span>
+                                            )}
                                         </td>
 
                                         {/* Local Socket */}
@@ -723,13 +841,13 @@ export function ConnectionTable() {
                                                     ev.stopPropagation();
                                                     setSelectedId(selectedId === eventId ? null : (eventId || null));
                                                 }}
-                                                className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition shadow-sm ${
+                                                className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition shadow-sm cursor-pointer ${
                                                     selectedId === eventId
                                                         ? 'bg-cyan-500 text-white font-bold ring-2 ring-cyan-400/50'
                                                         : 'bg-slate-800 hover:bg-cyan-600 text-slate-300 hover:text-white'
                                                 }`}
                                             >
-                                                {selectedId === eventId ? 'Close' : 'Inspect'}
+                                                {selectedId === eventId ? 'Close' : '🔬 Inspect'}
                                             </button>
                                         </td>
                                     </tr>
@@ -737,7 +855,7 @@ export function ConnectionTable() {
                             })}
                             {paddingBottom > 0 && (
                                 <tr>
-                                    <td style={{ height: `${paddingBottom}px` }} colSpan={13} />
+                                    <td style={{ height: `${paddingBottom}px` }} colSpan={14} />
                                 </tr>
                             )}
                         </>

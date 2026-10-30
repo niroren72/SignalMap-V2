@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { SYSTEM_MODULES } from '../types/modules';
 import { useConnectionStore } from '../stores/connectionStore';
-import type { ConnectionEvent } from '@shared/types';
+import { getEventModuleId, isSampleEvent } from '../utils/nestedConnections';
 import {
     SalesforceConfigModal,
     sfApiFetch,
@@ -17,6 +17,7 @@ import {
     Globe,
     Table,
     Download,
+    Trash2,
     Database,
     Settings,
     RefreshCw,
@@ -39,151 +40,20 @@ function ModuleIcon({ id, className }: { id: string; className?: string }) {
     return <Icon className={className} />;
 }
 
-function createSampleEvents(moduleId: string, nowMs: number, nowIso: string): ConnectionEvent[] {
-    if (moduleId === 'salesforce') {
-        return [
-            {
-                id: `sf-evt-${nowMs}-1`,
-                source_collector: 'salesforce',
-                direction: 'outbound',
-                state: 'active',
-                protocol: 'https',
-                local: {
-                    host: '10.0.4.15',
-                    port: 54120,
-                    process_name: 'Salesforce Connector (LoginHistory)',
-                    pid: 8812,
-                },
-                remote: {
-                    ip: '13.110.14.1',
-                    port: 443,
-                    hostname: 'na1.salesforce.com',
-                },
-                geo: {
-                    city: 'San Francisco',
-                    country: 'United States',
-                    lat: 37.7749,
-                    lon: -122.4194,
-                },
-                service: {
-                    name: 'Salesforce API Gateway',
-                    category: 'crm',
-                },
-                metrics: {
-                    bytes_in: 412000,
-                    bytes_out: 28000,
-                    first_seen: nowIso,
-                    last_seen: nowIso,
-                },
-                anomaly: {
-                    is_anomaly: false,
-                    title: 'Privileged CRM Export Audit',
-                    severity: 'low',
-                    description: 'Audited export action by authorized customer operations engineer.',
-                },
-            },
-            {
-                id: `sf-evt-${nowMs}-2`,
-                source_collector: 'salesforce',
-                direction: 'inbound',
-                state: 'active',
-                protocol: 'https',
-                local: {
-                    host: '10.0.4.15',
-                    port: 54125,
-                    process_name: 'Salesforce Real-time Event Monitor',
-                    pid: 8812,
-                },
-                remote: {
-                    ip: '198.51.100.77',
-                    port: 443,
-                    hostname: 'login.salesforce.com',
-                },
-                geo: {
-                    city: 'Frankfurt',
-                    country: 'Germany',
-                    lat: 50.1109,
-                    lon: 8.6821,
-                },
-                service: {
-                    name: 'Salesforce Identity Provider',
-                    category: 'crm',
-                },
-                metrics: {
-                    bytes_in: 18450000,
-                    bytes_out: 120000,
-                    first_seen: nowIso,
-                    last_seen: nowIso,
-                },
-                anomaly: {
-                    is_anomaly: true,
-                    title: 'Bulk Customer Opportunity Exfiltration Alert',
-                    severity: 'critical',
-                    description: 'Over 18.4 MB of customer records downloaded outside of business hours by privileged API token.',
-                },
-            },
-        ];
-    }
-    if (moduleId === 'hris') {
-        return [
-            {
-                id: `hris-evt-${nowMs}-1`,
-                source_collector: 'hris',
-                direction: 'inbound',
-                state: 'active',
-                protocol: 'https',
-                local: {
-                    host: '10.0.6.20',
-                    port: 48900,
-                    process_name: 'Workday Identity Sync',
-                    pid: 7300,
-                },
-                remote: {
-                    ip: '208.77.188.166',
-                    port: 443,
-                    hostname: 'wd5.workday.com',
-                },
-                geo: {
-                    city: 'Ashburn',
-                    country: 'United States',
-                    lat: 39.0438,
-                    lon: -77.4874,
-                },
-                service: {
-                    name: 'Workday API Webhook',
-                    category: 'other',
-                },
-                metrics: {
-                    bytes_in: 890000,
-                    bytes_out: 14000,
-                    first_seen: nowIso,
-                    last_seen: nowIso,
-                },
-                anomaly: {
-                    is_anomaly: false,
-                    title: 'Employee Directory Daily Sync',
-                    severity: 'low',
-                    description: 'Routine organizational unit synchronisation from HRIS master to identity provider.',
-                },
-            },
-        ];
-    }
-    return [];
-}
-
 export function ModulesView() {
     const {
         activeModule,
         setActiveModule,
         setActiveView,
         events,
-        addEvent,
         layoutTheme,
+        sampleLoadedModules,
+        ingestSampleModule,
+        clearSampleModule,
     } = useConnectionStore();
 
-    const [selectedTab, setSelectedTab] = useState<'all' | 'installed' | 'available' | 'coming_soon'>('installed');
+    const [selectedTab, setSelectedTab] = useState<'all' | 'installed' | 'available' | 'coming_soon'>('all');
     const [selectedModuleId, setSelectedModuleId] = useState<string>('windows');
-    const [sampleLoaded, setSampleLoaded] = useState<Record<string, boolean>>({});
     const [sfModalOpen, setSfModalOpen] = useState(false);
     const [sfStatus, setSfStatus] = useState<SalesforceConnectorStatus | null>(null);
 
@@ -226,41 +96,26 @@ export function ModulesView() {
 
     // Compute live event counts per module
     const getModuleEventCount = (modId: string) => {
-        if (modId === 'windows') {
-            return events.filter(
-                (e) =>
-                    !e.source_collector ||
-                    e.source_collector === 'psutil_sockets' ||
-                    e.source_collector === 'windows_udp' ||
-                    e.source_collector === 'windows_dns' ||
-                    e.source_collector === 'socket' ||
-                    e.source_collector === 'netstat' ||
-                    e.source_collector === 'windows_evtx' ||
-                    (e as { source_plugin?: string }).source_plugin === 'windows'
-            ).length;
-        }
-        if (modId === 'salesforce') {
-            return events.filter(
-                (e) =>
-                    e.source_collector?.startsWith('salesforce') ||
-                    (e as { source_plugin?: string }).source_plugin === 'salesforce'
-            ).length;
-        }
-        return events.filter(
-            (e) => e.source_collector === modId || (e as { source_plugin?: string }).source_plugin === modId
-        ).length;
+        const normId = modId === 'aws' ? 'cloud' : modId;
+        return events.filter((e) => getEventModuleId(e) === normId).length;
     };
 
-    // Helper to generate sample telemetry for testing multi-source mesh
+    const getModuleSampleCount = (modId: string) => {
+        const normId = modId === 'aws' ? 'cloud' : modId;
+        return events.filter((e) => isSampleEvent(e, normId)).length;
+    };
+
+    // Helper to ingest or clear sample telemetry for any module
     const handleLoadSampleEvents = (moduleId: string) => {
-        const nowMs = Date.now();
-        const nowIso = new Date(nowMs).toISOString();
-        const sampleEvents = createSampleEvents(moduleId, nowMs, nowIso);
-        sampleEvents.forEach((evt) => {
-            (evt as any).source_plugin = moduleId;
-            addEvent(evt);
-        });
-        setSampleLoaded((prev) => ({ ...prev, [moduleId]: true }));
+        ingestSampleModule(moduleId);
+    };
+
+    const handleClearSampleEvents = (moduleId: string) => {
+        const normId = moduleId === 'aws' ? 'cloud' : moduleId;
+        clearSampleModule(normId);
+        if (activeModule === normId && normId !== 'windows' && !(normId === 'salesforce' && sfStatus?.connected)) {
+            setActiveModule('all');
+        }
     };
 
     const selectedMod = SYSTEM_MODULES.find(m => m.id === selectedModuleId) || SYSTEM_MODULES[0];
@@ -310,7 +165,7 @@ export function ModulesView() {
                 statusColor: 'var(--color-status-ok)',
                 description: 'Integrate employee lifecycle events with security',
                 meta: 'v1.0 | Ready',
-                actionLabel: sampleLoaded['hris'] ? 'Ingested' : 'Connect',
+                actionLabel: sampleLoadedModules['hris'] ? 'Ingested' : 'Connect',
                 icon: Users,
             },
             {
@@ -420,36 +275,56 @@ export function ModulesView() {
                                 </div>
 
                                 {/* Footer Row */}
-                                <div className="flex items-center justify-between pt-3 border-t text-xs font-mono" style={{ borderColor: 'var(--color-border-hairline)' }}>
-                                    <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                                <div className="flex items-center justify-between pt-3 border-t text-xs font-mono gap-2" style={{ borderColor: 'var(--color-border-hairline)' }}>
+                                    <span className="text-[11px] truncate" style={{ color: 'var(--color-text-muted)' }}>
                                         {mod.meta}
                                     </span>
 
-                                    {!isComingSoon ? (
+                                    <div className="flex items-center gap-1.5 shrink-0">
                                         <button
-                                            onClick={() => {
-                                                if (mod.id === 'salesforce') {
-                                                    setSfModalOpen(true);
-                                                    setActiveModule('salesforce');
-                                                    return;
-                                                }
-                                                if (mod.id === 'hris') {
-                                                    handleLoadSampleEvents(mod.id);
-                                                }
-                                                setActiveModule(mod.id);
-                                            }}
-                                            className="px-3 py-1 rounded text-[11px] font-mono font-medium border transition hover:opacity-90"
+                                            onClick={() => handleLoadSampleEvents(mod.id)}
+                                            className="px-2 py-1 rounded text-[10px] font-mono font-medium border transition hover:opacity-90 flex items-center gap-1"
                                             style={{
-                                                backgroundColor: 'var(--color-bg-secondary)',
-                                                borderColor: 'var(--color-border)',
-                                                color: 'var(--color-text-primary)',
+                                                backgroundColor: 'var(--color-accent-subtle)',
+                                                borderColor: 'var(--color-accent-border)',
+                                                color: 'var(--color-accent)',
                                             }}
+                                            title="Ingest Sample Telemetry"
                                         >
-                                            {mod.actionLabel}
+                                            <Download className="w-3 h-3" />
+                                            <span>{getModuleSampleCount(mod.id) > 0 ? 'Re-Ingest' : 'Ingest Sample'}</span>
                                         </button>
-                                    ) : (
-                                        <span className="text-[10px] opacity-40">None</span>
-                                    )}
+                                        {getModuleSampleCount(mod.id) > 0 && (
+                                            <button
+                                                onClick={() => handleClearSampleEvents(mod.id)}
+                                                className="px-2 py-1 rounded text-[10px] font-mono font-medium border border-rose-500/40 bg-rose-500/10 text-rose-300 transition hover:bg-rose-500/20 flex items-center gap-1"
+                                                title="Clear Sample Telemetry"
+                                            >
+                                                <Trash2 className="w-3 h-3" />
+                                                <span>Clear</span>
+                                            </button>
+                                        )}
+                                        {!isComingSoon && (
+                                            <button
+                                                onClick={() => {
+                                                    if (mod.id === 'salesforce') {
+                                                        setSfModalOpen(true);
+                                                        setActiveModule('salesforce');
+                                                        return;
+                                                    }
+                                                    setActiveModule(mod.id);
+                                                }}
+                                                className="px-2.5 py-1 rounded text-[10px] font-mono font-medium border transition hover:opacity-90"
+                                                style={{
+                                                    backgroundColor: 'var(--color-bg-secondary)',
+                                                    borderColor: 'var(--color-border)',
+                                                    color: 'var(--color-text-primary)',
+                                                }}
+                                            >
+                                                {mod.actionLabel}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         );
@@ -840,20 +715,37 @@ export function ModulesView() {
                                 <span>{sfStatus?.connected ? 'Configure & Sync Tenant' : 'Connect Live Salesforce Tenant'}</span>
                             </button>
                         )}
-                        {(selectedMod.id === 'salesforce' || selectedMod.id === 'hris') && (
+
+                        {/* Sample Data Controls available on ALL modules */}
+                        <div className="grid grid-cols-2 gap-2">
                             <button
                                 onClick={() => handleLoadSampleEvents(selectedMod.id)}
-                                className="w-full py-1.5 px-3 rounded-lg text-xs font-mono font-medium border flex items-center justify-center gap-1.5 transition"
+                                className="py-1.5 px-2.5 rounded-lg text-[11px] font-mono font-semibold border flex items-center justify-center gap-1.5 transition hover:opacity-90 cursor-pointer"
                                 style={{
                                     backgroundColor: 'var(--color-accent-subtle)',
                                     borderColor: 'var(--color-accent-border)',
                                     color: 'var(--color-accent)',
                                 }}
+                                title={`Ingest sample events for ${selectedMod.name}`}
                             >
-                                <Download className="w-3.5 h-3.5" />
-                                <span>{sampleLoaded[selectedMod.id] ? 'Sample Ingested' : 'Ingest Sample Feeds'}</span>
+                                <Download className="w-3.5 h-3.5 shrink-0" />
+                                <span className="truncate">
+                                    {getModuleSampleCount(selectedMod.id) > 0
+                                        ? `Ingested (${getModuleSampleCount(selectedMod.id)})`
+                                        : 'Ingest Sample'}
+                                </span>
                             </button>
-                        )}
+
+                            <button
+                                onClick={() => handleClearSampleEvents(selectedMod.id)}
+                                disabled={getModuleSampleCount(selectedMod.id) === 0}
+                                className="py-1.5 px-2.5 rounded-lg text-[11px] font-mono font-semibold border flex items-center justify-center gap-1.5 transition border-rose-500/40 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
+                                title={`Clear sample events for ${selectedMod.name}`}
+                            >
+                                <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                                <span className="truncate">Clear Sample</span>
+                            </button>
+                        </div>
 
                         <div className="grid grid-cols-2 gap-2">
                             <button

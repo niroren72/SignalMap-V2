@@ -1,10 +1,12 @@
+import datetime
 import hashlib
 import ipaddress
 import socket
 import threading
+import time
 import urllib.request
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 import yaml
 import fnmatch
 
@@ -13,6 +15,46 @@ from geoip2.errors import AddressNotFoundError
 
 from .schema import ConnectionEvent, GeoInfo, AsnInfo, Protocol, ServiceCategory
 from .anomaly import anomaly_engine
+
+
+def _detect_timezone_origin() -> GeoInfo:
+    """
+    Instant, zero-network fallback that resolves the machine's geographical origin
+    from its OS timezone / UTC offset so local hosts (e.g., in Israel) never fall back to USA.
+    """
+    tz_names = " ".join(str(x) for x in time.tzname if x).lower()
+    try:
+        local_tz = str(datetime.datetime.now().astimezone().tzinfo or "").lower()
+        tz_names = f"{tz_names} {local_tz}"
+    except Exception:
+        pass
+
+    # Explicit timezone name matches
+    if any(k in tz_names for k in ("israel", "jerusalem", "tel aviv", "idt", "ist")):
+        return GeoInfo(lat=32.0853, lon=34.7818, country="IL", city="Tel Aviv")
+    if any(k in tz_names for k in ("gmt", "bst", "london", "utc")):
+        return GeoInfo(lat=51.5074, lon=-0.1278, country="GB", city="London")
+    if any(k in tz_names for k in ("cet", "cest", "berlin", "paris", "amsterdam", "frankfurt", "w. europe", "central europe")):
+        return GeoInfo(lat=50.1109, lon=8.6821, country="DE", city="Frankfurt")
+    if any(k in tz_names for k in ("eet", "eest", "athens", "bucharest", "helsinki", "fle")):
+        return GeoInfo(lat=32.0853, lon=34.7818, country="IL", city="Tel Aviv")
+    if any(k in tz_names for k in ("jst", "tokyo")):
+        return GeoInfo(lat=35.6762, lon=139.6503, country="JP", city="Tokyo")
+
+    # Check UTC offset in hours
+    try:
+        offset_sec = datetime.datetime.now().astimezone().utcoffset().total_seconds()  # type: ignore[union-attr]
+        offset_hrs = round(offset_sec / 3600.0, 1)
+        if offset_hrs in (2.0, 3.0):
+            return GeoInfo(lat=32.0853, lon=34.7818, country="IL", city="Tel Aviv")
+        if offset_hrs == 1.0:
+            return GeoInfo(lat=50.1109, lon=8.6821, country="DE", city="Frankfurt")
+        if offset_hrs == 0.0:
+            return GeoInfo(lat=51.5074, lon=-0.1278, country="GB", city="London")
+    except Exception:
+        pass
+
+    return GeoInfo(lat=32.0853, lon=34.7818, country="IL", city="Tel Aviv")
 
 
 def normalize_ip(ip: Optional[str]) -> str:
@@ -81,6 +123,56 @@ class DataEnricher:
         self._pending_dns: set[str] = set()
         self._geo_cache: Dict[str, GeoInfo] = {}
         self._asn_cache: Dict[str, AsnInfo] = {}
+        self._origin_geo: GeoInfo = _detect_timezone_origin()
+        self._public_ip: Optional[str] = None
+        self._wan_probe_started: bool = False
+
+    def _probe_wan_origin_bg(self) -> None:
+        """Non-blocking background probe to refine local host origin using public WAN IP + MaxMind."""
+        if self._wan_probe_started:
+            return
+        self._wan_probe_started = True
+
+        def _worker():
+            for url in ("https://api.ipify.org", "https://icanhazip.com", "https://ifconfig.me/ip"):
+                try:
+                    req = urllib.request.Request(url, headers={"User-Agent": "SignalMap/1.0"})
+                    with urllib.request.urlopen(req, timeout=2.5) as resp:
+                        wan_ip = resp.read().decode("utf-8", errors="ignore").strip()
+                        if wan_ip and not is_lan_or_multicast(wan_ip):
+                            self._public_ip = wan_ip
+                            if self.city_reader:
+                                geo = self._resolve_geo(wan_ip)
+                                if geo.lat is not None and geo.lon is not None:
+                                    self._origin_geo = GeoInfo(
+                                        lat=geo.lat,
+                                        lon=geo.lon,
+                                        country=geo.country or self._origin_geo.country,
+                                        city=geo.city or self._origin_geo.city,
+                                    )
+                            break
+                except Exception:
+                    continue
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def get_local_origin_geo(self) -> GeoInfo:
+        """Return the host's geographical origin (WAN GeoIP or OS Timezone fallback)."""
+        if not self._wan_probe_started and self.city_reader is not None:
+            self._probe_wan_origin_bg()
+        return self._origin_geo
+
+    def get_local_origin_info(self) -> Tuple[GeoInfo, str, Optional[str]]:
+        """Return (origin_geo, local_lan_ip, public_wan_ip)."""
+        local_ip = "127.0.0.1"
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+            s.close()
+        except Exception:
+            pass
+        return self.get_local_origin_geo(), local_ip, self._public_ip
 
     def update_forward_dns_cache(self, mapping: Dict[str, str]) -> None:
         """Update the IP -> Domain mapping harvested from the OS DNS Resolver cache."""
@@ -116,6 +208,7 @@ class DataEnricher:
         self.ensure_databases()
         try:
             self.city_reader = geoip2.database.Reader(str(self.city_db_path))
+            self._probe_wan_origin_bg()
         except Exception as e:
             print(f"Warning: Failed to load GeoIP City database: {e}")
             if self.city_db_path.exists():
@@ -219,15 +312,30 @@ class DataEnricher:
             event.remote.hostname = "localhost"
             return event
 
-        # Handle LAN / Multicast / Gateway endpoints cleanly
+        # Handle LAN / Multicast / Gateway endpoints cleanly using the host's real geographical origin
         if is_lan_or_multicast(ip):
+            origin_geo = self.get_local_origin_geo()
+            base_city = origin_geo.city or "Tel Aviv"
+            base_country = origin_geo.country or "IL"
+            base_lat = origin_geo.lat if origin_geo.lat is not None else 32.0853
+            base_lon = origin_geo.lon if origin_geo.lon is not None else 34.7818
             if ip.startswith("224.") or ip.startswith("239.") or ip.lower().startswith("ff0"):
                 event.remote.hostname = event.remote.hostname or "multicast.local"
-                event.geo = GeoInfo(lat=37.7749, lon=-122.4194, country="LAN", city="Multicast Mesh")
+                event.geo = GeoInfo(
+                    lat=base_lat,
+                    lon=base_lon,
+                    country=base_country,
+                    city=f"{base_city} (Multicast)",
+                )
                 event.asn = AsnInfo(number=0, org="Local Multicast Bus")
             else:
                 event.remote.hostname = event.remote.hostname or "gateway.lan"
-                event.geo = GeoInfo(lat=37.7749, lon=-122.4194, country="LAN", city="Local Subnet")
+                event.geo = GeoInfo(
+                    lat=base_lat,
+                    lon=base_lon,
+                    country=base_country,
+                    city=f"{base_city} (Local LAN)",
+                )
                 event.asn = AsnInfo(number=0, org="Private LAN Segment")
             if not event.service.category:
                 event.service.name = event.service.name or "LAN Discovery / UPnP"

@@ -1,6 +1,15 @@
 import type { ConnectionEvent } from '@shared/types';
 import { create } from 'zustand';
 import type { GlobeThemeId } from '../types/globeTheme';
+import { createModuleSampleEvents, isSampleEvent } from '../utils/nestedConnections';
+
+export interface OriginGeoState {
+    lat: number;
+    lng: number;
+    city: string;
+    country: string;
+    ip?: string;
+}
 
 export interface FiltersState {
     protocol: string | null;
@@ -68,8 +77,15 @@ interface ConnectionStore {
     filters: FiltersState;
 
     // Modular Multi-Source System
-    activeModule: string; // 'all' | 'windows' | 'salesforce' | 'hris' | 'macos' | 'cloud'
+    activeModule: string; // 'all' | 'windows' | 'salesforce' | 'hris' | 'macos' | 'cloud' | 'okta'
     setActiveModule: (moduleId: string) => void;
+    sampleLoadedModules: Record<string, boolean>;
+    ingestSampleModule: (moduleId: string) => void;
+    clearSampleModule: (moduleId: string) => void;
+
+    // Local Host Geo Origin (Synchronized across Globe, FlatMap & Tables)
+    originGeo: OriginGeoState;
+    setOriginGeo: (origin: OriginGeoState) => void;
 
     // Diagnostic 3D Globe Projection
     diagnosticOverlay: ActiveDiagnosticOverlay | null;
@@ -91,7 +107,7 @@ interface ConnectionStore {
     setGlobeProjection: (projection: GlobeProjection) => void;
 
     // Table Sorting
-    tableSortField: 'timestamp' | 'process' | 'source' | 'protocol' | 'remote_ip' | 'country' | 'category' | 'bytes' | 'severity';
+    tableSortField: 'timestamp' | 'process' | 'source' | 'protocol' | 'direction' | 'remote_ip' | 'country' | 'category' | 'bytes' | 'severity';
     tableSortDirection: 'asc' | 'desc';
 
     // Settings
@@ -153,6 +169,14 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
 
     // Modular Multi-Source System
     activeModule: 'all',
+    sampleLoadedModules: {},
+    originGeo: {
+        lat: 32.0853,
+        lng: 34.7818,
+        city: 'Tel Aviv',
+        country: 'IL',
+        ip: 'Local Host',
+    },
 
     // Diagnostic 3D Globe Projection
     diagnosticOverlay: null,
@@ -212,6 +236,14 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
     addEvent: (event) =>
         set((state) => {
             const max = state.settings.maxEventsRetention || 3000;
+            if (event.id) {
+                const idx = state.events.findIndex((e) => e.id === event.id);
+                if (idx !== -1) {
+                    const updated = [...state.events];
+                    updated[idx] = event;
+                    return { events: updated };
+                }
+            }
             const events = [...state.events, event];
             const trimmed = events.length > max ? events.slice(-max) : events;
             return { events: trimmed };
@@ -221,12 +253,41 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
         set((state) => {
             if (newEvents.length === 0) return state;
             const max = state.settings.maxEventsRetention || 3000;
-            const events = [...state.events, ...newEvents];
-            const trimmed = events.length > max ? events.slice(-max) : events;
+            const idMap = new Map<string, number>();
+            state.events.forEach((e, idx) => {
+                if (e.id) idMap.set(e.id, idx);
+            });
+
+            const updated = [...state.events];
+            const toAppend: ConnectionEvent[] = [];
+
+            for (const ne of newEvents) {
+                if (ne.id && idMap.has(ne.id)) {
+                    updated[idMap.get(ne.id)!] = ne;
+                } else {
+                    if (ne.id) idMap.set(ne.id, updated.length + toAppend.length);
+                    toAppend.push(ne);
+                }
+            }
+
+            const allEvents = [...updated, ...toAppend];
+            const trimmed = allEvents.length > max ? allEvents.slice(-max) : allEvents;
             return { events: trimmed };
         }),
 
-    setEvents: (events) => set({ events }),
+    setEvents: (events) =>
+        set(() => {
+            const seen = new Set<string>();
+            const deduped: ConnectionEvent[] = [];
+            for (const e of events) {
+                if (e.id) {
+                    if (seen.has(e.id)) continue;
+                    seen.add(e.id);
+                }
+                deduped.push(e);
+            }
+            return { events: deduped };
+        }),
 
     setSelectedId: (id) => set({ selectedId: id }),
 
@@ -262,6 +323,32 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
 
     // Modular Multi-Source System Actions
     setActiveModule: (activeModule) => set({ activeModule }),
+    ingestSampleModule: (moduleId) =>
+        set((state) => {
+            const normId = moduleId === 'aws' ? 'cloud' : moduleId;
+            // Remove existing sample events for this module first to avoid duplicates
+            const withoutOldSample = state.events.filter((e) => !isSampleEvent(e, normId));
+            const sampleBatch = createModuleSampleEvents(normId);
+            const max = state.settings.maxEventsRetention || 3000;
+            const merged = [...withoutOldSample, ...sampleBatch];
+            const trimmed = merged.length > max ? merged.slice(-max) : merged;
+            return {
+                events: trimmed,
+                sampleLoadedModules: { ...state.sampleLoadedModules, [normId]: true },
+            };
+        }),
+    clearSampleModule: (moduleId) =>
+        set((state) => {
+            const normId = moduleId === 'aws' ? 'cloud' : moduleId;
+            const filtered = state.events.filter((e) => !isSampleEvent(e, normId));
+            const nextSampleMap = { ...state.sampleLoadedModules };
+            delete nextSampleMap[normId];
+            return {
+                events: filtered,
+                sampleLoadedModules: nextSampleMap,
+            };
+        }),
+    setOriginGeo: (originGeo) => set({ originGeo }),
 
     // Diagnostic 3D Globe Actions
     setDiagnosticOverlay: (diagnosticOverlay) => set({ diagnosticOverlay }),

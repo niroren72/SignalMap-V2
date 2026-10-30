@@ -1,6 +1,9 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useConnectionStore, type ActiveViewType } from '../stores/connectionStore';
 import { SYSTEM_MODULES } from '../types/modules';
+import { getEventModuleId, matchesModule } from '../utils/nestedConnections';
+import { sfApiFetch } from './SalesforceConfigModal';
+import { Binary } from 'lucide-react';
 
 export function Header() {
     const {
@@ -9,24 +12,57 @@ export function Header() {
         isLive,
         setIsLive,
         events,
+        selectedId,
+        setSelectedId,
         searchQuery,
         setSearchQuery,
         setShowUploadModal,
         setShowSettingsModal,
         activeModule,
         setActiveModule,
+        sampleLoadedModules,
     } = useConnectionStore();
 
     const [isModuleDropdownOpen, setIsModuleDropdownOpen] = useState(false);
     const [copiedShare, setCopiedShare] = useState(false);
+    const [sfConnected, setSfConnected] = useState(false);
 
-    // Calculate bandwidth in MB and anomalies
+    useEffect(() => {
+        sfApiFetch('/api/connectors/salesforce/status')
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                if (data) setSfConnected(Boolean(data.connected));
+            })
+            .catch(() => {});
+    }, [events.length, isModuleDropdownOpen]);
+
+    // Count events per module and filter to ONLY connected / active modules
+    const { connectedModules, moduleCounts } = useMemo(() => {
+        const counts: Record<string, number> = {};
+        for (const e of events) {
+            const modId = getEventModuleId(e);
+            counts[modId] = (counts[modId] || 0) + 1;
+        }
+
+        const connected = SYSTEM_MODULES.filter((mod) => {
+            if (mod.id === 'windows') return true; // Local Windows host collector is always connected
+            if (mod.id === 'salesforce' && sfConnected) return true;
+            if (sampleLoadedModules[mod.id]) return true;
+            if ((counts[mod.id] || 0) > 0) return true;
+            return false;
+        });
+
+        return { connectedModules: connected, moduleCounts: counts };
+    }, [events, sfConnected, sampleLoadedModules]);
+
+    // Calculate bandwidth in MB and anomalies scoped to the active module
     const { totalBytesIn, totalBytesOut, anomalyCount } = useMemo(() => {
         let inBytes = 0;
         let outBytes = 0;
         let anomalies = 0;
 
         for (const e of events) {
+            if (!matchesModule(e, activeModule)) continue;
             inBytes += e.metrics?.bytes_in || 0;
             outBytes += e.metrics?.bytes_out || 0;
             if (e.anomaly?.is_anomaly) anomalies += 1;
@@ -37,7 +73,7 @@ export function Header() {
             totalBytesOut: (outBytes / (1024 * 1024)).toFixed(1),
             anomalyCount: anomalies,
         };
-    }, [events]);
+    }, [events, activeModule]);
 
     const activeModObj = SYSTEM_MODULES.find((m) => m.id === activeModule);
 
@@ -146,15 +182,18 @@ export function Header() {
                             </span>
                         </div>
 
-                        {/* Workspace breadcrumb dropdown */}
+                        {/* Workspace breadcrumb dropdown (Connected Modules Only) */}
                         <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-400 pl-2.5 border-l border-white/10 relative">
                             <button
                                 onClick={() => setIsModuleDropdownOpen(!isModuleDropdownOpen)}
-                                className="flex items-center gap-1.5 bg-slate-900 px-2 py-0.5 rounded-md border border-white/5 hover:border-slate-700 cursor-pointer transition-colors text-[11px]"
+                                className="flex items-center gap-1.5 bg-slate-900 px-2.5 py-1 rounded-md border border-white/10 hover:border-cyan-500/40 cursor-pointer transition-colors text-[11px]"
+                                title="Switch Connected Telemetry Cluster"
                             >
-                                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                                 <span className="text-slate-200 font-medium">
-                                    {activeModObj?.name ? `${activeModObj.name} Cluster` : 'Aerospace Live Cluster'}
+                                    {activeModObj?.name
+                                        ? `${activeModObj.name} Cluster`
+                                        : `All Connected Clusters (${connectedModules.length})`}
                                 </span>
                                 <svg className="w-3 h-3 text-slate-400 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
@@ -162,42 +201,83 @@ export function Header() {
                             </button>
 
                             {isModuleDropdownOpen && (
-                                <div className="absolute left-2.5 top-7 mt-1 w-52 p-1 rounded-xl border border-white/10 bg-[#090f1a] shadow-2xl z-50 flex flex-col gap-0.5 backdrop-blur-xl">
+                                <div className="absolute left-2.5 top-7 mt-1 w-64 p-1.5 rounded-xl border border-white/10 bg-[#090f1a] shadow-2xl z-50 flex flex-col gap-0.5 backdrop-blur-xl">
+                                    <div className="px-2 py-1 text-[9.5px] font-mono uppercase tracking-wider text-slate-400 border-b border-white/5 mb-0.5 flex items-center justify-between">
+                                        <span>Connected Clusters ({connectedModules.length})</span>
+                                        <span className="text-emerald-400">● Online</span>
+                                    </div>
                                     <button
                                         onClick={() => {
                                             setActiveModule('all');
+                                            if (activeView === 'modules' || activeView === 'netutils') {
+                                                setActiveView('dashboard');
+                                            }
                                             setIsModuleDropdownOpen(false);
                                         }}
-                                        className={`w-full text-left px-2 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between ${
+                                        className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between ${
                                             activeModule === 'all'
                                                 ? 'bg-emerald-500/15 text-emerald-400 font-semibold'
                                                 : 'text-slate-300 hover:bg-white/5'
                                         }`}
                                     >
-                                        <span>Aerospace Live Cluster (All)</span>
-                                        {activeModule === 'all' && (
-                                            <span className="text-emerald-400 font-bold">✓</span>
-                                        )}
-                                    </button>
-                                    {SYSTEM_MODULES.map((mod) => (
-                                        <button
-                                            key={mod.id}
-                                            onClick={() => {
-                                                setActiveModule(mod.id);
-                                                setIsModuleDropdownOpen(false);
-                                            }}
-                                            className={`w-full text-left px-2 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between ${
-                                                activeModule === mod.id
-                                                    ? 'bg-emerald-500/15 text-emerald-400 font-semibold'
-                                                    : 'text-slate-300 hover:bg-white/5'
-                                            }`}
-                                        >
-                                            <span>{mod.name}</span>
-                                            {activeModule === mod.id && (
+                                        <span className="flex items-center gap-2 truncate">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                                            <span className="truncate">All Connected Clusters</span>
+                                        </span>
+                                        <span className="flex items-center gap-1.5 shrink-0 font-mono text-[10px]">
+                                            <span className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
+                                                {events.length}
+                                            </span>
+                                            {activeModule === 'all' && (
                                                 <span className="text-emerald-400 font-bold">✓</span>
                                             )}
+                                        </span>
+                                    </button>
+                                    {connectedModules.map((mod) => {
+                                        const count = moduleCounts[mod.id] || 0;
+                                        return (
+                                            <button
+                                                key={mod.id}
+                                                onClick={() => {
+                                                    setActiveModule(mod.id);
+                                                    if (activeView === 'modules' || activeView === 'netutils') {
+                                                        setActiveView('dashboard');
+                                                    }
+                                                    setIsModuleDropdownOpen(false);
+                                                }}
+                                                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between ${
+                                                    activeModule === mod.id
+                                                        ? 'bg-emerald-500/15 text-emerald-400 font-semibold'
+                                                        : 'text-slate-300 hover:bg-white/5'
+                                                }`}
+                                            >
+                                                <span className="flex items-center gap-2 truncate">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
+                                                    <span className="truncate">{mod.name}</span>
+                                                </span>
+                                                <span className="flex items-center gap-1.5 shrink-0 font-mono text-[10px]">
+                                                    <span className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
+                                                        {count}
+                                                    </span>
+                                                    {activeModule === mod.id && (
+                                                        <span className="text-emerald-400 font-bold">✓</span>
+                                                    )}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                    <div className="pt-1 mt-0.5 border-t border-white/5">
+                                        <button
+                                            onClick={() => {
+                                                setActiveView('modules');
+                                                setIsModuleDropdownOpen(false);
+                                            }}
+                                            className="w-full text-left px-2.5 py-1 rounded-lg text-[10.5px] font-mono text-cyan-400 hover:bg-cyan-500/10 transition-colors flex items-center justify-between"
+                                        >
+                                            <span>+ Manage / Connect Modules</span>
+                                            <span>→</span>
                                         </button>
-                                    ))}
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -343,6 +423,27 @@ export function Header() {
                                 <option value="salesforce" className="bg-slate-900 text-slate-200">Edge Gateway</option>
                             </select>
                         </div>
+
+                        {/* Deep Inspection Suite CTA */}
+                        <button
+                            onClick={() => {
+                                if (selectedId) {
+                                    setSelectedId(null);
+                                } else {
+                                    const pick = events[0]?.id || 'default-inspect-1';
+                                    setSelectedId(pick);
+                                }
+                            }}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer shadow-sm ${
+                                selectedId
+                                    ? 'bg-cyan-500 text-white border-cyan-400 ring-2 ring-cyan-400/50 shadow-cyan-500/30'
+                                    : 'bg-cyan-500/15 hover:bg-cyan-500/25 border-cyan-500/40 text-cyan-300'
+                            }`}
+                            title="Open Deep Data Inspection & Payload Suite"
+                        >
+                            <Binary className="w-3.5 h-3.5 text-cyan-400" />
+                            <span>{selectedId ? 'Close Inspect' : 'Inspect Suite'}</span>
+                        </button>
 
                         {/* Primary Add Component CTA */}
                         <button

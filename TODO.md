@@ -18,10 +18,13 @@
 ---
 
 ## 🔥 Priority 1 — Core Windows Telemetry & Deep Visibility (`P1`)
-- [ ] **Deep Data Inspection & Data Visibility Suite**:
-  - [ ] **Multi-Tab Event Inspector (`DetailPanel.tsx` & Telemetry Grid)**: Add structured inspection tabs for *Formatted Overview*, *Raw JSON Schema*, *Protocol / TLS / HTTP / DNS Headers*, and *Process & Socket Forensics*.
-  - [ ] **Visual Data Coverage & Distribution Strip**: Add interactive visual breakdowns above the Telemetry Grid (protocol distribution bar, data source ingestion share, top processes/ASNs/countries, and enrichment completeness indicators for GeoIP/DNS/ASN/User attribution).
-  - [ ] **Field-Level Click-to-Filter Inspection**: Allow clicking any value inside a connection record or detail inspector (process name, user, ASN, port, protocol, or data source) to immediately filter or pivot across the 3D Globe, Topology Graph, and Telemetry Grid.
+- [x] **Deep Data Inspection & Data Visibility Suite**:
+  - [x] **Multi-Tab Event Inspector (`DetailPanel.tsx` & Telemetry Grid)**: Added structured inspection tabs for *Formatted Overview*, *Payload Stream (Hex & ASCII)*, *Protocol / TLS / HTTP / DNS Headers*, and *Raw JSON & Forensics*.
+  - [x] **Bidirectional Hex Dump & ASCII Packet Viewer**: Interactive 3-column Wireshark/xxd hex viewer (`00000000`, Hex bytes, ASCII) with stream direction filtering (`↗ Outbound`, `↙ Inbound`), format toggles (`Hex Dump`, `Formatted Text`, `Raw Stream`), in-payload search, cURL export, and JSON download.
+  - [x] **Built-in PII Detection & Redaction Engine**: Automated inspection for sensitive personal and authentication data (Emails, Credit Card / PAN, SSN, API Keys / Bearer Tokens / JWTs, Passwords, Phone numbers) with real-time severity scoring, PII breakdown drawer, and interactive `Mask PII: ON / OFF` toggle.
+  - [x] **Docking & Canvas Geometry Expansion**: One-click toggle between **Side Drawer** (480px ⇄ 840px wide) and **Bottom DevTools Shelf** (420px ⇄ 640px tall).
+  - [x] **Field-Level Click-to-Filter Inspection**: Click any process name, PID, user, ASN, port, or protocol to immediately pivot/filter across SignalMap.
+- [ ] **Visual Data Coverage & Distribution Strip**: Add interactive visual breakdowns above the Telemetry Grid (protocol distribution bar, data source ingestion share, top processes/ASNs/countries, and enrichment completeness indicators for GeoIP/DNS/ASN/User attribution).
 - [ ] **Help & Documentation Tab (`DocsView.tsx`)**:
   - [ ] Add a dedicated **Documentation / Help** navigation tab in `Header.tsx` and `Sidebar.tsx`.
   - [ ] **Connector & Module Requirements Matrix**: Document every connector (`Windows Endpoint`, `Windows EVTX / Sysmon`, `Salesforce Event Monitoring`, `HRIS / Workday / BambooHR / Okta`, `AWS VPC Flow Logs`, `macOS / Linux Daemon`) with:

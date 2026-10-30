@@ -416,7 +416,7 @@ export function PlaybackView() {
 
                                     return (
                                         <tr
-                                            key={eventId}
+                                            key={`playback-row-${eventId}-${idx}`}
                                             onClick={() => setSelectedId(selectedId === eventId ? null : (eventId || null))}
                                             className={`cursor-pointer transition-colors ${
                                                 isSelected

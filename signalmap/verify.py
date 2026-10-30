@@ -120,6 +120,21 @@ def stage_2_backend_smoke_tests() -> None:
     )
     print("  [OK] DataEnricher preserves connector GeoInfo, ServiceInfo & AnomalyInfo")
 
+    # 2b. Verify local origin GeoIP resolution (Israel timezone / WAN origin instead of hardcoded US)
+    lan_evt = ConnectionEvent(
+        source_collector="psutil_sockets",
+        protocol=Protocol.TCP,
+        remote=RemoteEndpoint(ip="192.168.1.105", port=445),
+    )
+    lan_enriched = enricher.enrich(lan_evt)
+    assert lan_enriched.geo is not None and lan_enriched.geo.lat is not None, (
+        "LAN event missing local origin coordinates"
+    )
+    assert not (abs(lan_enriched.geo.lat - 37.7749) < 0.001 and abs(lan_enriched.geo.lon - (-122.4194)) < 0.001), (
+        "LAN event still fell back to hardcoded San Francisco (37.7749, -122.4194)!"
+    )
+    print(f"  [OK] Local LAN enrichment uses true host origin ({lan_enriched.geo.city}, {lan_enriched.geo.country}: {lan_enriched.geo.lat}, {lan_enriched.geo.lon})")
+
     # 3. Exercise FastAPI endpoints via TestClient (disable background socket loop during unit test)
     from agent.config import config
     orig_socket_enabled = config.collectors.socket_enabled
@@ -143,6 +158,19 @@ def stage_2_backend_smoke_tests() -> None:
             assert r_tl.status_code == 200, f"/api/events/timeline failed: {r_tl.status_code}"
             assert "timeline" in r_tl.json()
             print("  [OK] GET /api/events/timeline -> 200 OK")
+
+            # GET /api/system/origin
+            r_origin = client.get("/api/system/origin")
+            assert r_origin.status_code == 200, f"/api/system/origin failed: {r_origin.status_code}"
+            origin_data = r_origin.json()
+            assert "latitude" in origin_data and "longitude" in origin_data
+            assert not (
+                abs(origin_data["latitude"] - 37.7749) < 0.001
+                and abs(origin_data["longitude"] - (-122.4194)) < 0.001
+            ), f"/api/system/origin returned hardcoded USA coordinates: {origin_data}"
+            print(
+                f"  [OK] GET /api/system/origin -> 200 OK ({origin_data.get('city')}, {origin_data.get('country')}: {origin_data.get('latitude')}, {origin_data.get('longitude')})"
+            )
 
             # GET /api/connectors/salesforce/status
             r_sf = client.get("/api/connectors/salesforce/status")

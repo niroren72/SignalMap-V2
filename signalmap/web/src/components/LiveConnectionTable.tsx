@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, Fragment } from 'react';
 import { useConnectionStore } from '../stores/connectionStore';
 import { getDataSourceMeta } from './ConnectionTable';
-import { ChevronDown, ChevronUp, Search, X, Copy, Check } from 'lucide-react';
+import { ChevronDown, ChevronUp, ChevronRight, Search, X, Copy, Check, GitBranch } from 'lucide-react';
+import { groupNestedEvents, matchesModule, normalizeEventGeoToOrigin } from '../utils/nestedConnections';
 
 export function LiveConnectionTable() {
     const {
@@ -14,75 +15,71 @@ export function LiveConnectionTable() {
         tableSortDirection,
         setTableSort,
         activeModule,
+        originGeo,
     } = useConnectionStore();
 
     const [isExpanded, setIsExpanded] = useState(false);
     const [tableSearch, setTableSearch] = useState('');
     const [copiedIp, setCopiedIp] = useState<string | null>(null);
+    const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+    const toggleGroup = (groupKey: string, ev: React.MouseEvent) => {
+        ev.stopPropagation();
+        setExpandedGroups((prev) => ({ ...prev, [groupKey]: !prev[groupKey] }));
+    };
 
     // Filter events
     const filteredEvents = useMemo(() => {
-        return events.filter((e) => {
-            if (activeModule && activeModule !== 'all') {
-                const collector = e.source_collector || 'psutil_sockets';
-                const plugin = (e as { source_plugin?: string }).source_plugin || (
-                    collector === 'psutil_sockets' ||
-                    collector === 'windows_udp' ||
-                    collector === 'windows_dns' ||
-                    collector === 'windows_evtx' ||
-                    collector === 'socket' ||
-                    collector === 'netstat'
-                        ? 'windows'
-                        : collector.startsWith('salesforce')
-                        ? 'salesforce'
-                        : collector
-                );
-                if (plugin !== activeModule) return false;
-            }
+        return events
+            .filter((e) => {
+                if (!matchesModule(e, activeModule)) return false;
 
-            if (filters.protocol && e.protocol !== filters.protocol) return false;
-            if (filters.direction && e.direction !== filters.direction) return false;
-            if (filters.category && e.service?.category !== filters.category) return false;
-            if (filters.source && getDataSourceMeta(e).id !== filters.source && e.source_collector !== filters.source) return false;
-            if (filters.anomalyOnly && !e.anomaly?.is_anomaly) return false;
-            if (filters.severity && e.anomaly?.severity !== filters.severity) return false;
+                if (filters.protocol && e.protocol !== filters.protocol) return false;
+                if (filters.direction && e.direction !== filters.direction) return false;
+                if (filters.category && e.service?.category !== filters.category) return false;
+                if (filters.source && getDataSourceMeta(e).id !== filters.source && e.source_collector !== filters.source) return false;
+                if (filters.anomalyOnly && !e.anomaly?.is_anomaly) return false;
+                if (filters.severity && e.anomaly?.severity !== filters.severity) return false;
 
-            const sourceMeta = getDataSourceMeta(e);
+                const sourceMeta = getDataSourceMeta(e);
 
-            if (searchQuery) {
-                const q = searchQuery.toLowerCase();
-                const matchGlobal =
-                    e.local?.process_name?.toLowerCase().includes(q) ||
-                    e.local?.user?.toLowerCase().includes(q) ||
-                    e.remote?.ip?.toLowerCase().includes(q) ||
-                    e.remote?.hostname?.toLowerCase().includes(q) ||
-                    e.service?.name?.toLowerCase().includes(q) ||
-                    e.geo?.city?.toLowerCase().includes(q) ||
-                    e.geo?.country?.toLowerCase().includes(q) ||
-                    sourceMeta.label.toLowerCase().includes(q) ||
-                    sourceMeta.sublabel.toLowerCase().includes(q);
-                if (!matchGlobal) return false;
-            }
+                if (searchQuery) {
+                    const q = searchQuery.toLowerCase();
+                    const matchGlobal =
+                        e.local?.process_name?.toLowerCase().includes(q) ||
+                        e.local?.user?.toLowerCase().includes(q) ||
+                        e.remote?.ip?.toLowerCase().includes(q) ||
+                        e.remote?.hostname?.toLowerCase().includes(q) ||
+                        e.service?.name?.toLowerCase().includes(q) ||
+                        e.geo?.city?.toLowerCase().includes(q) ||
+                        e.geo?.country?.toLowerCase().includes(q) ||
+                        e.direction?.toLowerCase().includes(q) ||
+                        sourceMeta.label.toLowerCase().includes(q) ||
+                        sourceMeta.sublabel.toLowerCase().includes(q);
+                    if (!matchGlobal) return false;
+                }
 
-            if (tableSearch) {
-                const tq = tableSearch.toLowerCase();
-                const matchTable =
-                    e.local?.process_name?.toLowerCase().includes(tq) ||
-                    e.local?.user?.toLowerCase().includes(tq) ||
-                    e.remote?.ip?.toLowerCase().includes(tq) ||
-                    e.remote?.hostname?.toLowerCase().includes(tq) ||
-                    e.service?.name?.toLowerCase().includes(tq) ||
-                    e.protocol?.toLowerCase().includes(tq) ||
-                    e.geo?.country?.toLowerCase().includes(tq) ||
-                    sourceMeta.label.toLowerCase().includes(tq) ||
-                    sourceMeta.sublabel.toLowerCase().includes(tq) ||
-                    e.anomaly?.title?.toLowerCase().includes(tq);
-                if (!matchTable) return false;
-            }
+                if (tableSearch) {
+                    const tq = tableSearch.toLowerCase();
+                    const matchTable =
+                        e.local?.process_name?.toLowerCase().includes(tq) ||
+                        e.local?.user?.toLowerCase().includes(tq) ||
+                        e.remote?.ip?.toLowerCase().includes(tq) ||
+                        e.remote?.hostname?.toLowerCase().includes(tq) ||
+                        e.service?.name?.toLowerCase().includes(tq) ||
+                        e.protocol?.toLowerCase().includes(tq) ||
+                        e.direction?.toLowerCase().includes(tq) ||
+                        e.geo?.country?.toLowerCase().includes(tq) ||
+                        sourceMeta.label.toLowerCase().includes(tq) ||
+                        sourceMeta.sublabel.toLowerCase().includes(tq) ||
+                        e.anomaly?.title?.toLowerCase().includes(tq);
+                    if (!matchTable) return false;
+                }
 
-            return true;
-        });
-    }, [events, filters, searchQuery, tableSearch, activeModule]);
+                return true;
+            })
+            .map((e) => normalizeEventGeoToOrigin(e, originGeo));
+    }, [events, filters, searchQuery, tableSearch, activeModule, originGeo]);
 
     // Sort events
     const sortedEvents = useMemo(() => {
@@ -108,6 +105,9 @@ export function LiveConnectionTable() {
                 }
                 case 'protocol': {
                     return (a.protocol || '').localeCompare(b.protocol || '') * dir;
+                }
+                case 'direction': {
+                    return (a.direction || 'outbound').localeCompare(b.direction || 'outbound') * dir;
                 }
                 case 'remote_ip': {
                     return (a.remote?.ip || '').localeCompare(b.remote?.ip || '') * dir;
@@ -136,6 +136,12 @@ export function LiveConnectionTable() {
 
         return sorted;
     }, [filteredEvents, tableSortField, tableSortDirection]);
+
+    const groupedRows = useMemo(() => groupNestedEvents(sortedEvents), [sortedEvents]);
+    const totalNestedCount = useMemo(
+        () => groupedRows.reduce((sum, g) => sum + g.children.length, 0),
+        [groupedRows]
+    );
 
     const handleCopyIp = (ip: string, ev: React.MouseEvent) => {
         ev.stopPropagation();
@@ -207,6 +213,20 @@ export function LiveConnectionTable() {
                         >
                             {sortedEvents.length} Active
                         </span>
+
+                        {totalNestedCount > 0 && (
+                            <span
+                                className="px-2 py-0.5 rounded border text-[11px] font-bold flex items-center gap-1"
+                                style={{
+                                    backgroundColor: 'rgba(99, 102, 241, 0.14)',
+                                    borderColor: 'rgba(99, 102, 241, 0.45)',
+                                    color: '#a5b4fc',
+                                }}
+                            >
+                                <GitBranch className="w-3 h-3" />
+                                <span>{totalNestedCount} Nested</span>
+                            </span>
+                        )}
 
                         {anomalyCount > 0 && (
                             <span
@@ -328,6 +348,12 @@ export function LiveConnectionTable() {
                                         {tableSortField === 'protocol' && (tableSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                                     </span>
                                 </th>
+                                <th onClick={() => setTableSort('direction')} className="px-3 py-2 cursor-pointer hover:opacity-80">
+                                    <span className="inline-flex items-center gap-1">
+                                        Direction
+                                        {tableSortField === 'direction' && (tableSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                                    </span>
+                                </th>
                                 <th className="px-3 py-2">Local Socket</th>
                                 <th onClick={() => setTableSort('remote_ip')} className="px-3 py-2 cursor-pointer hover:opacity-80">
                                     <span className="inline-flex items-center gap-1">
@@ -352,146 +378,200 @@ export function LiveConnectionTable() {
                             </tr>
                         </thead>
                         <tbody className="divide-y font-mono text-[11px]" style={{ borderColor: 'var(--color-border-hairline)' }}>
-                            {sortedEvents.length === 0 ? (
+                            {groupedRows.length === 0 ? (
                                 <tr>
-                                    <td colSpan={11} className="px-4 py-8 text-center" style={{ color: 'var(--color-text-muted)' }}>
+                                    <td colSpan={12} className="px-4 py-8 text-center" style={{ color: 'var(--color-text-muted)' }}>
                                         No active sockets matching current filters.
                                     </td>
                                 </tr>
                             ) : (
-                                sortedEvents.map((e, idx) => {
-                                    const eventId = e.id || '';
-                                    const isSelected = selectedId === eventId;
-                                    const isAnomaly = e.anomaly?.is_anomaly;
-                                    const severity = e.anomaly?.severity;
-                                    const sourceMeta = getDataSourceMeta(e);
+                                groupedRows.map((group, idx) => {
+                                    const isGroupExpanded = Boolean(expandedGroups[group.groupKey]);
+                                    const rowsToRender = isGroupExpanded
+                                        ? [
+                                              { event: group.primary, isChild: false, childIdx: 0 },
+                                              ...group.children.map((c, cIdx) => ({ event: c, isChild: true, childIdx: cIdx + 1 })),
+                                          ]
+                                        : [{ event: group.primary, isChild: false, childIdx: 0 }];
 
                                     return (
-                                        <tr
-                                            key={eventId || `live-conn-${idx}`}
-                                            onClick={() => setSelectedId(selectedId === eventId ? null : (eventId || null))}
-                                            className="cursor-pointer transition-colors hover:opacity-90"
-                                            style={{
-                                                backgroundColor: isSelected
-                                                    ? 'var(--color-accent-subtle)'
-                                                    : isAnomaly
-                                                    ? 'rgba(239, 68, 68, 0.08)'
-                                                    : 'transparent',
-                                                borderLeft: isSelected ? '3px solid var(--color-accent)' : '3px solid transparent',
-                                            }}
-                                        >
-                                            <td className="px-3 py-1.5 whitespace-nowrap">
-                                                {isAnomaly ? (
-                                                    <span
-                                                        className="px-2 py-0.5 rounded text-[9px] font-bold uppercase border"
+                                        <Fragment key={`live-group-${group.groupKey}-${idx}`}>
+                                            {rowsToRender.map(({ event: e, isChild, childIdx }) => {
+                                                const eventId = e.id || '';
+                                                const isSelected = selectedId === eventId;
+                                                const isAnomaly = e.anomaly?.is_anomaly;
+                                                const severity = e.anomaly?.severity;
+                                                const sourceMeta = getDataSourceMeta(e);
+                                                const isInbound = e.direction === 'inbound';
+
+                                                return (
+                                                    <tr
+                                                        key={`live-row-${group.groupKey}-${eventId || 'e'}-${isChild ? `c-${childIdx}` : 'p'}-${idx}`}
+                                                        onClick={() => setSelectedId(selectedId === eventId ? null : (eventId || null))}
+                                                        className="cursor-pointer transition-colors hover:opacity-90"
                                                         style={{
-                                                            backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                                                            borderColor: 'var(--color-status-danger)',
-                                                            color: 'var(--color-status-danger)',
+                                                            backgroundColor: isSelected
+                                                                ? 'var(--color-accent-subtle)'
+                                                                : isChild
+                                                                ? 'rgba(99, 102, 241, 0.08)'
+                                                                : isAnomaly
+                                                                ? 'rgba(239, 68, 68, 0.08)'
+                                                                : 'transparent',
+                                                            borderLeft: isSelected
+                                                                ? '3px solid var(--color-accent)'
+                                                                : isChild
+                                                                ? '3px solid #818cf8'
+                                                                : '3px solid transparent',
                                                         }}
                                                     >
-                                                        {severity || 'Threat'}
-                                                    </span>
-                                                ) : (
-                                                    <span
-                                                        className="px-2 py-0.5 rounded text-[9px] border"
-                                                        style={{
-                                                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                                                            borderColor: 'var(--color-status-ok)',
-                                                            color: 'var(--color-status-ok)',
-                                                        }}
-                                                    >
-                                                        NORMAL
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-3 py-1.5 whitespace-nowrap" style={{ color: 'var(--color-text-muted)' }}>
-                                                {formatTime(e.metrics?.last_seen || e.metrics?.first_seen)}
-                                            </td>
-                                            <td className="px-3 py-1.5 whitespace-nowrap">
-                                                <div className="flex items-center gap-1.5 flex-wrap">
-                                                    <span className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                                                        {e.local?.process_name || 'System'}
-                                                    </span>
-                                                    {e.local?.pid != null && (
-                                                        <span className="text-[10px] opacity-60 font-mono">
-                                                            ({e.local.pid})
-                                                        </span>
-                                                    )}
-                                                    {e.local?.user && (
-                                                        <span
-                                                            className="inline-flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.2 rounded"
-                                                            style={{
-                                                                backgroundColor: 'rgba(56, 189, 248, 0.12)',
-                                                                color: '#38bdf8',
-                                                                border: '1px solid rgba(56, 189, 248, 0.25)',
-                                                            }}
-                                                            title={`Executing User: ${e.local.user}`}
-                                                        >
-                                                            <span className="w-1 h-1 rounded-full bg-sky-400" />
-                                                            {e.local.user}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-3 py-1.5 whitespace-nowrap">
-                                                <span
-                                                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-[9px] font-mono font-semibold ${sourceMeta.badgeClass}`}
-                                                    title={`Collector: ${sourceMeta.sublabel}`}
-                                                >
-                                                    <span>{sourceMeta.icon}</span>
-                                                    <span>{sourceMeta.label}</span>
-                                                </span>
-                                            </td>
-                                            <td className="px-3 py-1.5 whitespace-nowrap uppercase font-bold" style={{ color: 'var(--color-text-secondary)' }}>
-                                                {e.protocol || 'TCP'}
-                                            </td>
-                                            <td className="px-3 py-1.5 whitespace-nowrap" style={{ color: 'var(--color-text-muted)' }}>
-                                                {e.local?.host || '127.0.0.1'}:{e.local?.port || 0}
-                                            </td>
-                                            <td className="px-3 py-1.5 whitespace-nowrap">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span style={{ color: 'var(--color-accent-text)' }}>
-                                                        {e.remote?.ip || '0.0.0.0'}:{e.remote?.port || 0}
-                                                    </span>
-                                                    {e.remote?.ip && (
-                                                        <button
-                                                            onClick={(ev) => handleCopyIp(e.remote?.ip || '', ev)}
-                                                            className="opacity-50 hover:opacity-100 transition"
-                                                            title="Copy IP"
-                                                        >
-                                                            {copiedIp === e.remote.ip ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-3 py-1.5 whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>
-                                                {e.geo?.city ? `${e.geo.city}, ` : ''}{e.geo?.country || 'Local'}
-                                            </td>
-                                            <td className="px-3 py-1.5 whitespace-nowrap">
-                                                <span style={{ color: 'var(--color-status-ok)' }}>↓ {formatBytes(e.metrics?.bytes_in)}</span>{' '}
-                                                <span style={{ color: 'var(--color-accent-text)' }}>↑ {formatBytes(e.metrics?.bytes_out)}</span>
-                                            </td>
-                                            <td className="px-3 py-1.5 whitespace-nowrap max-w-[180px] truncate" style={{ color: isAnomaly ? 'var(--color-status-danger)' : 'var(--color-text-muted)' }}>
-                                                {e.anomaly?.title || e.anomaly?.description || '-'}
-                                            </td>
-                                            <td className="px-3 py-1.5 whitespace-nowrap text-right">
-                                                <button
-                                                    onClick={(ev) => {
-                                                        ev.stopPropagation();
-                                                        setSelectedId(selectedId === eventId ? null : (eventId || null));
-                                                    }}
-                                                    className="px-2 py-0.5 rounded border text-[10px] font-semibold transition hover:opacity-80"
-                                                    style={{
-                                                        backgroundColor: selectedId === eventId ? 'var(--color-accent)' : 'var(--color-bg-secondary)',
-                                                        borderColor: selectedId === eventId ? 'var(--color-accent)' : 'var(--color-border)',
-                                                        color: selectedId === eventId ? '#ffffff' : 'var(--color-text-primary)',
-                                                    }}
-                                                >
-                                                    {selectedId === eventId ? 'Close' : 'Inspect'}
-                                                </button>
-                                            </td>
-                                        </tr>
+                                                        <td className="px-3 py-1.5 whitespace-nowrap">
+                                                            {isAnomaly ? (
+                                                                <span
+                                                                    className="px-2 py-0.5 rounded text-[9px] font-bold uppercase border"
+                                                                    style={{
+                                                                        backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                                                                        borderColor: 'var(--color-status-danger)',
+                                                                        color: 'var(--color-status-danger)',
+                                                                    }}
+                                                                >
+                                                                    {severity || 'Threat'}
+                                                                </span>
+                                                            ) : (
+                                                                <span
+                                                                    className="px-2 py-0.5 rounded text-[9px] border"
+                                                                    style={{
+                                                                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                                                        borderColor: 'var(--color-status-ok)',
+                                                                        color: 'var(--color-status-ok)',
+                                                                    }}
+                                                                >
+                                                                    NORMAL
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-3 py-1.5 whitespace-nowrap" style={{ color: 'var(--color-text-muted)' }}>
+                                                            {formatTime(e.metrics?.last_seen || e.metrics?.first_seen)}
+                                                        </td>
+                                                        <td className="px-3 py-1.5 whitespace-nowrap">
+                                                            <div className={`flex items-center gap-1.5 flex-wrap ${isChild ? 'pl-4' : ''}`}>
+                                                                {isChild && (
+                                                                    <span className="text-[9.5px] font-bold text-indigo-400">
+                                                                        ↳ #{childIdx}
+                                                                    </span>
+                                                                )}
+                                                                <span className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                                                                    {e.local?.process_name || 'System'}
+                                                                </span>
+                                                                {e.local?.pid != null && (
+                                                                    <span className="text-[10px] opacity-60 font-mono">
+                                                                        ({e.local.pid})
+                                                                    </span>
+                                                                )}
+                                                                {e.local?.user && (
+                                                                    <span
+                                                                        className="inline-flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.2 rounded"
+                                                                        style={{
+                                                                            backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                                                                            color: '#38bdf8',
+                                                                            border: '1px solid rgba(56, 189, 248, 0.25)',
+                                                                        }}
+                                                                        title={`Executing User: ${e.local.user}`}
+                                                                    >
+                                                                        <span className="w-1 h-1 rounded-full bg-sky-400" />
+                                                                        {e.local.user}
+                                                                    </span>
+                                                                )}
+                                                                {!isChild && group.children.length > 0 && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(ev) => toggleGroup(group.groupKey, ev)}
+                                                                        className="inline-flex items-center gap-0.5 text-[9.5px] font-mono font-bold px-1.5 py-0.2 rounded-full border border-indigo-400/50 bg-indigo-500/20 text-indigo-200 hover:bg-indigo-500/30 transition cursor-pointer"
+                                                                        title="Expand/collapse nested sub-connections"
+                                                                    >
+                                                                        {isGroupExpanded ? (
+                                                                            <ChevronDown className="w-2.5 h-2.5" />
+                                                                        ) : (
+                                                                            <ChevronRight className="w-2.5 h-2.5" />
+                                                                        )}
+                                                                        <span>+{group.children.length} nested</span>
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-3 py-1.5 whitespace-nowrap">
+                                                            <span
+                                                                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-[9px] font-mono font-semibold ${sourceMeta.badgeClass}`}
+                                                                title={`Collector: ${sourceMeta.sublabel}`}
+                                                            >
+                                                                <span>{sourceMeta.icon}</span>
+                                                                <span>{sourceMeta.label}</span>
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-3 py-1.5 whitespace-nowrap uppercase font-bold" style={{ color: 'var(--color-text-secondary)' }}>
+                                                            {e.protocol || 'TCP'}
+                                                        </td>
+                                                        <td className="px-3 py-1.5 whitespace-nowrap">
+                                                            {isInbound ? (
+                                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-950/60 border border-amber-500/40 text-amber-300 font-mono text-[9px] font-bold uppercase">
+                                                                    <span>↙</span>
+                                                                    <span>INBOUND</span>
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 font-mono text-[9px] font-bold uppercase">
+                                                                    <span>↗</span>
+                                                                    <span>OUTBOUND</span>
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-3 py-1.5 whitespace-nowrap" style={{ color: 'var(--color-text-muted)' }}>
+                                                            {e.local?.host || '127.0.0.1'}:{e.local?.port || 0}
+                                                        </td>
+                                                        <td className="px-3 py-1.5 whitespace-nowrap">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span style={{ color: 'var(--color-accent-text)' }}>
+                                                                    {e.remote?.ip || '0.0.0.0'}:{e.remote?.port || 0}
+                                                                </span>
+                                                                {e.remote?.ip && (
+                                                                    <button
+                                                                        onClick={(ev) => handleCopyIp(e.remote?.ip || '', ev)}
+                                                                        className="opacity-50 hover:opacity-100 transition"
+                                                                        title="Copy IP"
+                                                                    >
+                                                                        {copiedIp === e.remote.ip ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-3 py-1.5 whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>
+                                                            {e.geo?.city ? `${e.geo.city}, ` : ''}{e.geo?.country || 'Local'}
+                                                        </td>
+                                                        <td className="px-3 py-1.5 whitespace-nowrap">
+                                                            <span style={{ color: 'var(--color-status-ok)' }}>↓ {formatBytes(e.metrics?.bytes_in)}</span>{' '}
+                                                            <span style={{ color: 'var(--color-accent-text)' }}>↑ {formatBytes(e.metrics?.bytes_out)}</span>
+                                                        </td>
+                                                        <td className="px-3 py-1.5 whitespace-nowrap max-w-[180px] truncate" style={{ color: isAnomaly ? 'var(--color-status-danger)' : 'var(--color-text-muted)' }}>
+                                                            {e.anomaly?.title || e.anomaly?.description || '-'}
+                                                        </td>
+                                                        <td className="px-3 py-1.5 whitespace-nowrap text-right">
+                                                            <button
+                                                                onClick={(ev) => {
+                                                                    ev.stopPropagation();
+                                                                    setSelectedId(selectedId === eventId ? null : (eventId || null));
+                                                                }}
+                                                                className="px-2 py-0.5 rounded border text-[10px] font-semibold transition hover:opacity-80 cursor-pointer"
+                                                                style={{
+                                                                    backgroundColor: selectedId === eventId ? 'var(--color-accent)' : 'var(--color-bg-secondary)',
+                                                                    borderColor: selectedId === eventId ? 'var(--color-accent)' : 'var(--color-border)',
+                                                                    color: selectedId === eventId ? '#ffffff' : 'var(--color-text-primary)',
+                                                                }}
+                                                            >
+                                                                {selectedId === eventId ? 'Close' : '🔬 Inspect'}
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </Fragment>
                                     );
                                 })
                             )}

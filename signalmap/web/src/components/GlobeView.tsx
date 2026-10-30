@@ -56,25 +56,48 @@ export function GlobeView() {
         [globeTheme]
     );
 
-    // Fetch origin coordinates from local backend (airgap-safe, zero external privacy leaks)
-    const [origin, setOrigin] = useState({ lat: 39.8283, lng: -98.5795 });
+    // Synchronized origin coordinates from local backend & store (defaults to Israel: 32.0853, 34.7818)
+    const originGeo = useConnectionStore((s) => s.originGeo);
+    const setOriginGeo = useConnectionStore((s) => s.setOriginGeo);
+    const origin = useMemo(
+        () => ({
+            lat: originGeo.lat,
+            lng: originGeo.lng,
+            city: originGeo.city,
+            country: originGeo.country,
+            ip: originGeo.ip,
+        }),
+        [originGeo]
+    );
+
     useEffect(() => {
         const apiBase =
             window.location.port === '5173' || window.location.port === '5174'
-                ? 'http://localhost:8765'
+                ? 'http://127.0.0.1:8765'
                 : '';
         fetch(`${apiBase}/api/system/origin`)
             .then((res) => res.json())
             .then((data) => {
-                if (data.latitude && data.longitude) {
-                    setOrigin({ lat: data.latitude, lng: data.longitude });
+                if (data.latitude != null && data.longitude != null) {
+                    setOriginGeo({
+                        lat: data.latitude,
+                        lng: data.longitude,
+                        city: data.city || 'Tel Aviv',
+                        country: data.country || 'IL',
+                        ip: data.public_ip || data.ip || 'Local Host',
+                    });
+                    if (globeRef.current && !diagnosticOverlay) {
+                        globeRef.current.pointOfView(
+                            { lat: data.latitude, lng: data.longitude, altitude: 2.15 },
+                            900
+                        );
+                    }
                 }
             })
             .catch(() => {
-                // Safe fallback to default coordinates if offline
-                setOrigin({ lat: 37.7749, lng: -122.4194 });
+                // Keep store default (Tel Aviv, IL: 32.0853, 34.7818)
             });
-    }, []);
+    }, [setOriginGeo]);
 
     // Load geopolitical country borders for 3D globe and flat projection
     useEffect(() => {
@@ -89,7 +112,7 @@ export function GlobeView() {
         [events]
     );
 
-    // Group events by remote coordinate
+    // Group events by remote coordinate + explicit Local Origin marker
     const points = useMemo(() => {
         const grouped = geoEvents.reduce((acc, e) => {
             const geo = e.geo!;
@@ -115,24 +138,53 @@ export function GlobeView() {
             return acc;
         }, {} as Record<string, any>);
 
-        return Object.values(grouped).map((p: any) => ({
+        const remotePts = Object.values(grouped).map((p: any) => ({
             ...p,
-            radius: Math.min(Math.max(p.size * 0.15, 0.3), 2.5),
+            radius: Math.min(Math.max(p.size * 0.15, 0.35), 2.5),
             color: currentTheme.pointColor(p),
         }));
-    }, [geoEvents, currentTheme]);
+
+        // Always include the Local Host Origin marker (e.g., Tel Aviv, IL) so maps and IP tables match
+        const originPoint = {
+            lat: origin.lat,
+            lng: origin.lng,
+            size: Math.max(remotePts.length, 3),
+            radius: 1.35,
+            color: '#10b981',
+            isOrigin: true,
+            label: `Local Host (${origin.city || 'Tel Aviv'}, ${origin.country || 'IL'})`,
+            city: origin.city || 'Tel Aviv',
+            country: origin.country || 'IL',
+            ip: origin.ip || 'Local Host',
+            hasAnomaly: false,
+            maxSeverity: 'low',
+            events: [],
+        };
+
+        return [originPoint, ...remotePts];
+    }, [geoEvents, currentTheme, origin]);
 
     const arcs = useMemo(() => {
-        return geoEvents.map((e) => ({
-            startLat: origin.lat,
-            startLng: origin.lng,
-            endLat: e.geo!.lat,
-            endLng: e.geo!.lon,
-            color: currentTheme.arcColors(e),
-            stroke: e.anomaly?.is_anomaly ? 1.2 : 0.6,
-            altitude: e.anomaly?.is_anomaly ? 0.3 : 0.2,
-            event: e,
-        }));
+        return geoEvents
+            .filter(
+                (e) =>
+                    Math.abs((e.geo!.lat ?? 0) - origin.lat) > 0.03 ||
+                    Math.abs((e.geo!.lon ?? 0) - origin.lng) > 0.03
+            )
+            .map((e) => {
+                const isInbound = e.direction === 'inbound';
+                return {
+                    startLat: isInbound ? e.geo!.lat : origin.lat,
+                    startLng: isInbound ? e.geo!.lon : origin.lng,
+                    endLat: isInbound ? origin.lat : e.geo!.lat,
+                    endLng: isInbound ? origin.lng : e.geo!.lon,
+                    color: currentTheme.arcColors(e),
+                    stroke: e.anomaly?.is_anomaly ? 1.2 : 0.65,
+                    altitude: e.anomaly?.is_anomaly ? 0.3 : 0.22,
+                    direction: e.direction || 'outbound',
+                    event: e,
+                };
+            });
     }, [geoEvents, origin, currentTheme]);
 
     // ── Diagnostic Overlay Route Arcs & Hop Points ──
@@ -347,21 +399,21 @@ export function GlobeView() {
                 }
             })
             .onPointClick((pt: any) => {
-                if (pt.isDiagnostic) {
+                if (pt.isDiagnostic || pt.isOrigin) {
                     globe.pointOfView({ lat: pt.lat, lng: pt.lng, altitude: 1.2 }, 800);
                     setSelectedGooglePoint({
                         lat: pt.lat,
                         lng: pt.lng,
-                        label: pt.label,
-                        ip: pt.ip,
-                        hostname: pt.hostname,
-                        city: pt.city,
-                        country: pt.country,
-                        org: pt.org,
+                        label: pt.label || 'Local Origin',
+                        ip: pt.ip || 'Local Host',
+                        hostname: pt.hostname || 'localhost',
+                        city: pt.city || origin.city || 'Tel Aviv',
+                        country: pt.country || origin.country || 'IL',
+                        org: pt.org || 'Local Host Sensor',
                         isPop: pt.isPop,
-                        isDiagnostic: true,
-                        hopNum: pt.hopNum,
-                        avg_ms: pt.avg_ms,
+                        isDiagnostic: Boolean(pt.isDiagnostic),
+                        hopNum: pt.hopNum ?? 0,
+                        avg_ms: pt.avg_ms ?? 0,
                     });
                 } else if (pt.events && pt.events.length > 0) {
                     setSelectedId(pt.events[0].id);
@@ -400,8 +452,8 @@ export function GlobeView() {
             wonderfulSystemRef.current = sys;
         }
 
-        // Camera POV: Europe/Africa perspective matching download.png / wonderful.ai
-        globe.pointOfView({ lat: 18, lng: 16, altitude: 2.2 });
+        // Camera POV: Center on local host origin (Israel: 32.0853, 34.7818)
+        globe.pointOfView({ lat: origin.lat, lng: origin.lng, altitude: 2.15 });
 
         globe.onGlobeReady(() => {
             updateThemeCustomObjects();

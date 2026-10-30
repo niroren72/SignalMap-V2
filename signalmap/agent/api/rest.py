@@ -166,23 +166,13 @@ async def get_status():
 
 @router.get("/system/origin")
 async def get_origin():
-    """Returns local host origin coordinates for 3D globe visualization without external privacy leaks."""
-    local_ip = "127.0.0.1"
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        local_ip = s.getsockname()[0]
-        s.close()
-    except Exception:
-        pass
+    """Returns local host origin coordinates for 3D globe visualization synchronized with host WAN/Timezone geo."""
+    origin_geo, local_ip, public_ip = enricher.get_local_origin_info()
 
-    geo = enricher._resolve_geo(local_ip)
-    
-    # Fallback to standard SOC coordinate (37.7749, -122.4194) if unmapped/internal
-    lat = geo.lat if geo.lat is not None else 37.7749
-    lon = geo.lon if geo.lon is not None else -122.4194
-    city = geo.city or "Local SOC"
-    country = geo.country or "US"
+    lat = origin_geo.lat if origin_geo.lat is not None else 32.0853
+    lon = origin_geo.lon if origin_geo.lon is not None else 34.7818
+    city = origin_geo.city or "Tel Aviv"
+    country = origin_geo.country or "IL"
 
     return {
         "latitude": lat,
@@ -190,6 +180,7 @@ async def get_origin():
         "city": city,
         "country": country,
         "ip": local_ip,
-        "is_local": True
+        "public_ip": public_ip,
+        "is_local": True,
     }
 

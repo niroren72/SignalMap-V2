@@ -1,21 +1,45 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useConnectionStore } from '../stores/connectionStore';
 import type { ConnectionEvent } from '@shared/types';
+import { matchesModule, normalizeEventGeoToOrigin } from '../utils/nestedConnections';
 
 const API_BASE = import.meta.env.DEV ? 'http://127.0.0.1:8765/api' : '/api';
 
 export function useInitialEvents() {
     const setEvents = useConnectionStore((s) => s.setEvents);
     const setTimelineBuckets = useConnectionStore((s) => s.setTimelineBuckets);
+    const setOriginGeo = useConnectionStore((s) => s.setOriginGeo);
     const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {
+        // Fetch local origin geo first so LAN/local events synchronize to actual location (e.g., Israel)
+        fetch(`${API_BASE}/system/origin`)
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.latitude != null && data.longitude != null) {
+                    setOriginGeo({
+                        lat: data.latitude,
+                        lng: data.longitude,
+                        city: data.city || 'Tel Aviv',
+                        country: data.country || 'IL',
+                        ip: data.public_ip || data.ip || 'Local Host',
+                    });
+                }
+            })
+            .catch(() => {
+                // Keep store default (Tel Aviv, IL)
+            });
+
         // Fetch recent events
         fetch(`${API_BASE}/events?limit=1000`)
             .then((res) => res.json())
             .then((data) => {
                 if (data.events) {
-                    setEvents(data.events as ConnectionEvent[]);
+                    const currentOrigin = useConnectionStore.getState().originGeo;
+                    const normalized = (data.events as ConnectionEvent[]).map((e) =>
+                        normalizeEventGeoToOrigin(e, currentOrigin)
+                    );
+                    setEvents(normalized);
                 }
                 setLoaded(true);
             })
@@ -35,7 +59,7 @@ export function useInitialEvents() {
             .catch((err) => {
                 console.error('Failed to load timeline:', err);
             });
-    }, [setEvents, setTimelineBuckets]);
+    }, [setEvents, setTimelineBuckets, setOriginGeo]);
 
     return loaded;
 }
@@ -48,6 +72,7 @@ export function useFilteredEvents(): ConnectionEvent[] {
     const isLive = useConnectionStore((s) => s.isLive);
     const timeRangePreset = useConnectionStore((s) => s.timeRangePreset);
     const activeModule = useConnectionStore((s) => s.activeModule);
+    const originGeo = useConnectionStore((s) => s.originGeo);
     const [mountTime] = useState(() => Date.now());
 
     return useMemo(() => {
@@ -58,24 +83,10 @@ export function useFilteredEvents(): ConnectionEvent[] {
         else if (timeRangePreset === '1h') minTimeMs = now - 60 * 60 * 1000;
         else if (timeRangePreset === '24h') minTimeMs = now - 24 * 60 * 60 * 1000;
 
-        return events.filter((e) => {
-            // Modular Multi-Source Plugin filter
-            if (activeModule && activeModule !== 'all') {
-                const collector = e.source_collector || 'psutil_sockets';
-                const plugin = (e as { source_plugin?: string }).source_plugin || (
-                    collector === 'psutil_sockets' ||
-                    collector === 'windows_udp' ||
-                    collector === 'windows_dns' ||
-                    collector === 'windows_evtx' ||
-                    collector === 'socket' ||
-                    collector === 'netstat'
-                        ? 'windows'
-                        : collector.startsWith('salesforce')
-                        ? 'salesforce'
-                        : collector
-                );
-                if (plugin !== activeModule) return false;
-            }
+        return events
+            .filter((e) => {
+                // Modular Multi-Source Plugin filter
+                if (!matchesModule(e, activeModule)) return false;
 
             // Event timestamp
             const eventTime = e.metrics?.last_seen || e.metrics?.first_seen;
@@ -142,6 +153,7 @@ export function useFilteredEvents(): ConnectionEvent[] {
             }
 
             return true;
-        });
-    }, [events, filters, searchQuery, playbackTime, isLive, timeRangePreset, activeModule, mountTime]);
+        })
+        .map((e) => normalizeEventGeoToOrigin(e, originGeo));
+    }, [events, filters, searchQuery, playbackTime, isLive, timeRangePreset, activeModule, originGeo, mountTime]);
 }

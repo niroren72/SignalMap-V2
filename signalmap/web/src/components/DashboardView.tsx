@@ -1,5 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { useConnectionStore } from '../stores/connectionStore';
+import { SYSTEM_MODULES } from '../types/modules';
+import {
+    groupNestedEvents,
+    isSampleEvent,
+    matchesModule,
+    normalizeEventGeoToOrigin,
+} from '../utils/nestedConnections';
+import { ChevronDown, ChevronRight, Download, Trash2, GitBranch, Binary } from 'lucide-react';
 
 const DEFAULT_MOCK_COMPONENTS = [
     {
@@ -133,13 +141,53 @@ const DEFAULT_MOCK_STREAM = [
 ];
 
 export function DashboardView() {
-    const { events, setSelectedId, setActiveView, searchQuery: globalSearch } = useConnectionStore();
+    const {
+        events,
+        selectedId,
+        setSelectedId,
+        setActiveView,
+        searchQuery: globalSearch,
+        setFilter,
+        activeModule,
+        setActiveModule,
+        ingestSampleModule,
+        clearSampleModule,
+        originGeo,
+    } = useConnectionStore();
     const [tableSearch, setTableSearch] = useState('');
     const [timeframe, setTimeframe] = useState<'1h' | '6h' | '24h'>('1h');
     const [currentPage, setCurrentPage] = useState(1);
+    const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
     const PAGE_SIZE = 7;
 
-    // ── Metric Calculations ─────────────────────────────────────────────
+    const toggleGroup = (groupKey: string, ev: React.MouseEvent) => {
+        ev.stopPropagation();
+        setExpandedGroups((prev) => ({ ...prev, [groupKey]: !prev[groupKey] }));
+    };
+
+    const activeModObj = useMemo(
+        () => SYSTEM_MODULES.find((m) => m.id === activeModule),
+        [activeModule]
+    );
+
+    // Filter events by the active module selected in the Header toggle
+    const moduleEvents = useMemo(
+        () =>
+            events
+                .filter((e) => matchesModule(e, activeModule))
+                .map((e) => normalizeEventGeoToOrigin(e, originGeo)),
+        [events, activeModule, originGeo]
+    );
+
+    const activeSampleCount = useMemo(
+        () =>
+            activeModule !== 'all'
+                ? events.filter((e) => isSampleEvent(e, activeModule)).length
+                : events.filter((e) => isSampleEvent(e)).length,
+        [events, activeModule]
+    );
+
+    // ── Metric Calculations (Scoped to activeModule) ────────────────────
     const {
         activeSocketCount,
         dataProcessedMB,
@@ -152,12 +200,17 @@ export function DashboardView() {
         threatPct,
         protocolStats,
         totalPackets,
+        inboundCount,
+        outboundCount,
     } = useMemo(() => {
-        const totalEvents = events.length || 1;
+        const isScoped = activeModule !== 'all';
+        const totalEvents = moduleEvents.length || 1;
         let totalBytes = 0;
         let totalPkts = 0;
         let threats = 0;
         let unclassified = 0;
+        let inbound = 0;
+        let outbound = 0;
 
         const processMap = new Map<string, boolean>();
         const protocols: Record<string, number> = {
@@ -168,11 +221,14 @@ export function DashboardView() {
             OTHER: 0,
         };
 
-        for (const e of events) {
+        for (const e of moduleEvents) {
             const bytesIn = e.metrics?.bytes_in || 0;
             const bytesOut = e.metrics?.bytes_out || 0;
             totalBytes += bytesIn + bytesOut;
             totalPkts += e.metrics?.packets || 8;
+
+            if (e.direction === 'inbound') inbound++;
+            else outbound++;
 
             if (e.anomaly?.is_anomaly) {
                 threats++;
@@ -196,7 +252,7 @@ export function DashboardView() {
                 } else {
                     protocols.TCP++;
                 }
-            } else if (p === 'UDP') {
+            } else if (p === 'UDP' || p === 'QUIC' || p === 'DNS' || p === 'NTP') {
                 protocols.UDP++;
             } else if (p === 'HTTPS' || p === 'WSS') {
                 protocols.HTTPS++;
@@ -208,67 +264,76 @@ export function DashboardView() {
         }
 
         const cleanCount = Math.max(0, totalEvents - threats - unclassified);
-        const clean = Number(((cleanCount / totalEvents) * 100).toFixed(1));
-        const unclass = Number(((unclassified / totalEvents) * 100).toFixed(1));
-        const threatP = Number(((threats / totalEvents) * 100).toFixed(1));
+        const clean = moduleEvents.length > 0 ? Number(((cleanCount / totalEvents) * 100).toFixed(1)) : 100.0;
+        const unclass = moduleEvents.length > 0 ? Number(((unclassified / totalEvents) * 100).toFixed(1)) : 0.0;
+        const threatP = moduleEvents.length > 0 ? Number(((threats / totalEvents) * 100).toFixed(1)) : 0.0;
 
         let faultedCount = 0;
         processMap.forEach((isFaulted) => {
             if (isFaulted) faultedCount++;
         });
 
-        // Nominal values matching design if few/no events
-        const displaySockets = events.length > 0 ? events.length : 12;
-        const totalMB = events.length > 0 ? Math.round(totalBytes / (1024 * 1024)) || 142 : 142;
-        const avgKB = events.length > 0 ? (totalBytes / totalEvents / 1024).toFixed(1) : '5.2';
-        const displayProcs = processMap.size > 0 ? processMap.size : 7;
-        const displayPkts = totalPkts > 0 ? totalPkts : 4821;
+        const displaySockets = moduleEvents.length > 0 ? moduleEvents.length : isScoped ? 0 : 12;
+        const totalMB =
+            moduleEvents.length > 0
+                ? Number((totalBytes / (1024 * 1024)).toFixed(1))
+                : isScoped
+                ? 0
+                : 142;
+        const avgKB =
+            moduleEvents.length > 0
+                ? (totalBytes / totalEvents / 1024).toFixed(1)
+                : isScoped
+                ? '0.0'
+                : '5.2';
+        const displayProcs = processMap.size > 0 ? processMap.size : isScoped ? 0 : 7;
+        const displayPkts = totalPkts > 0 ? totalPkts : isScoped ? 0 : 4821;
 
         const protoList = [
             {
                 name: 'TCP',
-                count: protocols.TCP || 12,
-                share: protocols.TCP ? Number(((protocols.TCP / totalEvents) * 100).toFixed(1)) : 24.0,
+                count: moduleEvents.length > 0 || isScoped ? protocols.TCP : 12,
+                share: protocols.TCP ? Number(((protocols.TCP / totalEvents) * 100).toFixed(1)) : isScoped ? 0 : 24.0,
                 bgBar: 'bg-amber-500/80 group-hover:bg-amber-400',
                 text: 'text-amber-400',
                 border: 'hover:border-amber-500/40',
-                barHeight: '54%',
+                barHeight: `${Math.max(8, Math.min(100, protocols.TCP ? Math.round((protocols.TCP / totalEvents) * 100) : isScoped ? 8 : 54))}%`,
             },
             {
                 name: 'UDP',
-                count: protocols.UDP || 8,
-                share: protocols.UDP ? Number(((protocols.UDP / totalEvents) * 100).toFixed(1)) : 16.0,
+                count: moduleEvents.length > 0 || isScoped ? protocols.UDP : 8,
+                share: protocols.UDP ? Number(((protocols.UDP / totalEvents) * 100).toFixed(1)) : isScoped ? 0 : 16.0,
                 bgBar: 'bg-orange-500/80 group-hover:bg-orange-400',
                 text: 'text-orange-400',
                 border: 'hover:border-orange-500/40',
-                barHeight: '36%',
+                barHeight: `${Math.max(8, Math.min(100, protocols.UDP ? Math.round((protocols.UDP / totalEvents) * 100) : isScoped ? 8 : 36))}%`,
             },
             {
                 name: 'HTTPS',
-                count: protocols.HTTPS || 22,
-                share: protocols.HTTPS ? Number(((protocols.HTTPS / totalEvents) * 100).toFixed(1)) : 44.0,
+                count: moduleEvents.length > 0 || isScoped ? protocols.HTTPS : 22,
+                share: protocols.HTTPS ? Number(((protocols.HTTPS / totalEvents) * 100).toFixed(1)) : isScoped ? 0 : 44.0,
                 bgBar: 'bg-cyan-500 group-hover:bg-cyan-400 shadow-sm shadow-cyan-500/40',
                 text: 'text-cyan-400',
                 border: 'hover:border-cyan-500/40',
-                barHeight: '100%',
+                barHeight: `${Math.max(8, Math.min(100, protocols.HTTPS ? Math.round((protocols.HTTPS / totalEvents) * 100) : isScoped ? 8 : 100))}%`,
             },
             {
                 name: 'HTTP',
-                count: protocols.HTTP || 5,
-                share: protocols.HTTP ? Number(((protocols.HTTP / totalEvents) * 100).toFixed(1)) : 10.0,
+                count: moduleEvents.length > 0 || isScoped ? protocols.HTTP : 5,
+                share: protocols.HTTP ? Number(((protocols.HTTP / totalEvents) * 100).toFixed(1)) : isScoped ? 0 : 10.0,
                 bgBar: 'bg-sky-500/80 group-hover:bg-sky-400',
                 text: 'text-sky-400',
                 border: 'hover:border-sky-500/40',
-                barHeight: '22%',
+                barHeight: `${Math.max(8, Math.min(100, protocols.HTTP ? Math.round((protocols.HTTP / totalEvents) * 100) : isScoped ? 8 : 22))}%`,
             },
             {
                 name: 'OTHER',
-                count: protocols.OTHER || 3,
-                share: protocols.OTHER ? Number(((protocols.OTHER / totalEvents) * 100).toFixed(1)) : 6.0,
+                count: moduleEvents.length > 0 || isScoped ? protocols.OTHER : 3,
+                share: protocols.OTHER ? Number(((protocols.OTHER / totalEvents) * 100).toFixed(1)) : isScoped ? 0 : 6.0,
                 bgBar: 'bg-slate-600 group-hover:bg-slate-500',
                 text: 'text-slate-400',
                 border: 'hover:border-slate-500/40',
-                barHeight: '14%',
+                barHeight: `${Math.max(8, Math.min(100, protocols.OTHER ? Math.round((protocols.OTHER / totalEvents) * 100) : isScoped ? 8 : 14))}%`,
             },
         ];
 
@@ -279,27 +344,24 @@ export function DashboardView() {
             uniqueProcessCount: displayProcs,
             faultedProcessCount: faultedCount,
             threatCount: threats,
-            cleanPct: clean > 0 ? clean : 100.0,
+            cleanPct: clean,
             unclassifiedPct: unclass,
             threatPct: threatP,
             protocolStats: protoList,
             totalPackets: displayPkts,
+            inboundCount: inbound,
+            outboundCount: outbound,
         };
-    }, [events]);
+    }, [moduleEvents, activeModule]);
 
-    // ── Unified Source List (Events or Default Mock Set) ────────────────
+    // ── Unified Source List (Module-Scoped Events; only fallback to mock if 'all' and 0 events) ──
     const sourceList = useMemo(() => {
-        if (events && events.length >= 7) return events;
-        // Merge real events first, then fill remainder with mock components
-        const combined = [...events];
-        for (const m of DEFAULT_MOCK_COMPONENTS) {
-            if (combined.length >= 12) break;
-            combined.push(m as any);
-        }
-        return combined;
-    }, [events]);
+        if (moduleEvents.length > 0) return moduleEvents;
+        if (activeModule !== 'all') return [];
+        return DEFAULT_MOCK_COMPONENTS as any[];
+    }, [moduleEvents, activeModule]);
 
-    // ── Table Filtering & Pagination ────────────────────────────────────
+    // ── Table Filtering, Nested Grouping & Pagination ───────────────────
     const filteredEvents = useMemo(() => {
         const query = (tableSearch || globalSearch).toLowerCase().trim();
         if (!query) return sourceList;
@@ -311,22 +373,31 @@ export function DashboardView() {
             const host = (e.remote?.hostname || '').toLowerCase();
             const org = (e.asn?.org || '').toLowerCase();
             const proto = (e.protocol || '').toLowerCase();
+            const dir = (e.direction || 'outbound').toLowerCase();
             return (
                 proc.includes(query) ||
                 pid.includes(query) ||
                 ip.includes(query) ||
                 host.includes(query) ||
                 org.includes(query) ||
-                proto.includes(query)
+                proto.includes(query) ||
+                dir.includes(query)
             );
         });
     }, [sourceList, tableSearch, globalSearch]);
 
-    const totalPages = Math.ceil(filteredEvents.length / PAGE_SIZE) || 1;
-    const paginatedEvents = useMemo(() => {
-        const start = (currentPage - 1) * PAGE_SIZE;
-        return filteredEvents.slice(start, start + PAGE_SIZE);
-    }, [filteredEvents, currentPage]);
+    const groupedRows = useMemo(() => groupNestedEvents(filteredEvents), [filteredEvents]);
+    const totalNestedCount = useMemo(
+        () => groupedRows.reduce((sum, g) => sum + g.children.length, 0),
+        [groupedRows]
+    );
+
+    const totalPages = Math.ceil(groupedRows.length / PAGE_SIZE) || 1;
+    const paginatedGroups = useMemo(() => {
+        const safePage = Math.min(currentPage, totalPages);
+        const start = (safePage - 1) * PAGE_SIZE;
+        return groupedRows.slice(start, start + PAGE_SIZE);
+    }, [groupedRows, currentPage, totalPages]);
 
     // Gauge circumference: 251.2
     const gaugeCircumference = 251.2;
@@ -343,25 +414,104 @@ export function DashboardView() {
         return `${Math.floor(mins / 60)}h ago`;
     };
 
-    // Live Activity Stream Items
+    // Live Activity Stream Items (Scoped to activeModule)
     const streamItems = useMemo(() => {
-        if (events.length >= 5) {
-            return events.slice(0, 5).map((e, idx) => ({
+        if (moduleEvents.length > 0) {
+            return moduleEvents.slice(-5).reverse().map((e, idx) => ({
                 id: e.id || idx,
                 target: e.asn?.org || e.remote?.hostname || (e.remote?.ip === '127.0.0.1' ? 'localhost' : e.remote?.ip) || 'localhost',
                 proto: (e.protocol || 'TCP').toUpperCase(),
+                direction: (e.direction || 'outbound').toUpperCase(),
                 proc: e.local?.process_name || 'System',
                 timeAgo: formatTimeAgo(e.metrics?.last_seen, idx),
             }));
         }
+        if (activeModule !== 'all') {
+            return [];
+        }
         return DEFAULT_MOCK_STREAM.map((item, idx) => ({
             id: `stream-${idx}`,
+            direction: 'OUTBOUND',
             ...item,
         }));
-    }, [events]);
+    }, [moduleEvents, activeModule]);
 
     return (
         <main className="flex-1 p-4 space-y-4 max-w-[1920px] mx-auto w-full select-none" data-purpose="main-dashboard-canvas">
+            {/* Active Cluster & Direction / Sample Controls Banner */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-2.5 rounded-xl border border-white/10 bg-[#0c1322]/90">
+                <div className="flex flex-wrap items-center gap-2.5 text-xs">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 font-semibold font-mono text-[11px]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                        {activeModObj ? activeModObj.name : 'All Connected Clusters'}
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/25 text-cyan-300 font-mono text-[10px]">
+                        ↗ Outbound: {outboundCount}
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/25 text-emerald-300 font-mono text-[10px]">
+                        ↙ Inbound: {inboundCount}
+                    </span>
+                    {totalNestedCount > 0 && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-950/60 border border-indigo-500/30 text-indigo-300 font-mono text-[10px]">
+                            <GitBranch className="w-3 h-3" />
+                            +{totalNestedCount} nested
+                        </span>
+                    )}
+                    <span className="text-[10px] font-mono text-slate-400 hidden sm:inline">
+                        Origin: {originGeo.city || 'Tel Aviv'}, {originGeo.country || 'IL'} ({originGeo.lat.toFixed(2)}, {originGeo.lng.toFixed(2)})
+                    </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    {activeModule !== 'all' && (
+                        <>
+                            <button
+                                onClick={() => ingestSampleModule(activeModule)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10.5px] font-mono font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 transition-colors cursor-pointer"
+                            >
+                                <Download className="w-3 h-3" />
+                                Ingest Sample
+                            </button>
+                            {activeSampleCount > 0 && (
+                                <button
+                                    onClick={() => clearSampleModule(activeModule)}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10.5px] font-mono font-semibold bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition-colors cursor-pointer"
+                                >
+                                    <Trash2 className="w-3 h-3" />
+                                    Clear Sample ({activeSampleCount})
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setActiveModule('all')}
+                                className="px-2 py-1 rounded-lg text-[10.5px] font-mono text-slate-400 hover:text-white bg-slate-900 border border-white/10 transition-colors cursor-pointer"
+                            >
+                                Show All Connected
+                            </button>
+                        </>
+                    )}
+
+                    <button
+                        onClick={() => {
+                            if (selectedId) {
+                                setSelectedId(null);
+                            } else {
+                                const pick = moduleEvents[0]?.id || events[0]?.id || 'default-inspect-1';
+                                setSelectedId(pick);
+                            }
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10.5px] font-mono font-bold transition-all cursor-pointer shadow-sm ${
+                            selectedId
+                                ? 'bg-cyan-500 text-white border border-cyan-400 ring-2 ring-cyan-400/50 shadow-cyan-500/20'
+                                : 'bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 hover:border-cyan-500/50'
+                        }`}
+                        title="Open Deep Data Inspection & Payload Suite"
+                    >
+                        <Binary className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>{selectedId ? 'Close Inspect' : '🔬 Open Inspection Suite'}</span>
+                    </button>
+                </div>
+            </div>
+
             {/* BEGIN: TopKPISection */}
             {/* 4 Key Telemetry Metrics with High-Tech Monospace Data */}
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" data-purpose="kpi-metric-cards">
@@ -581,7 +731,9 @@ export function DashboardView() {
                         {protocolStats.map((p) => (
                             <div
                                 key={p.name}
-                                className={`bg-[#090f1a] border border-white/5 rounded-xl p-2.5 flex flex-col justify-between relative overflow-hidden group ${p.border} transition-colors`}
+                                onClick={() => setFilter('protocol', p.name.toLowerCase())}
+                                className={`bg-[#090f1a] border border-white/5 rounded-xl p-2.5 flex flex-col justify-between relative overflow-hidden group ${p.border} transition-colors cursor-pointer hover:border-cyan-500/50 hover:bg-[#0d1627]`}
+                                title={`Click to filter by ${p.name}`}
                             >
                                 <div>
                                     <span className="text-[10px] uppercase tracking-wider text-slate-400 font-mono font-medium">
@@ -676,83 +828,169 @@ export function DashboardView() {
                             <thead>
                                 <tr className="border-b border-white/5 bg-[#090f1a]/60 text-slate-400 font-mono uppercase text-[9.5px] tracking-wider">
                                     <th className="py-2 px-3 sm:px-4 font-semibold" scope="col">Component / Process</th>
+                                    <th className="py-2 px-2.5 font-semibold" scope="col">Direction</th>
                                     <th className="py-2 px-2.5 font-semibold" scope="col">Category</th>
                                     <th className="py-2 px-2.5 font-semibold" scope="col">Status</th>
                                     <th className="py-2 px-2.5 font-semibold" scope="col">Remote ASN / Supplier</th>
                                     <th className="py-2 px-2.5 font-semibold" scope="col">Target Protocol</th>
                                     <th className="py-2 px-3 sm:px-4 font-semibold text-right" scope="col">Last Seen</th>
+                                    <th className="py-2 px-3 sm:px-4 font-semibold text-right" scope="col">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5 font-sans">
-                                {paginatedEvents.map((e, idx) => {
-                                    const procName = e.local?.process_name || 'System';
-                                    const pid = e.local?.pid ? `PID-${e.local.pid}` : 'PID-8476';
-                                    const category = (e.service?.category || 'TELEMETRY').toUpperCase();
-                                    const isAnomaly = Boolean(e.anomaly?.is_anomaly);
-                                    const remoteTarget = e.asn?.org || e.remote?.hostname || (e.remote?.ip === '127.0.0.1' ? 'localhost' : e.remote?.ip) || 'localhost';
-                                    const port = e.remote?.port || e.local?.port || 443;
-                                    const isHttps = port === 443;
-                                    const protoStr = `${(e.protocol || 'TCP').toUpperCase()} :${port}`;
-                                    const lastSeen = formatTimeAgo(e.metrics?.last_seen, idx);
+                                {paginatedGroups.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={8} className="py-8 text-center text-slate-400 font-mono text-xs">
+                                            No telemetry records in this cluster yet. Use &quot;Ingest Sample&quot; above or in System Modules to populate sample telemetry.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    paginatedGroups.map((group, idx) => {
+                                        const e = group.primary;
+                                        const isExpanded = Boolean(expandedGroups[group.groupKey]);
+                                        const nestedCount = group.children.length;
 
-                                    return (
-                                        <tr
-                                            key={e.id || idx}
-                                            onClick={() => e.id && setSelectedId(e.id)}
-                                            className="hover:bg-slate-800/30 transition-colors group cursor-pointer"
-                                        >
-                                            <td className="py-1.5 px-3 sm:px-4">
-                                                <div className="flex items-center gap-2.5">
-                                                    <div className="w-6 h-6 rounded-md bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path d="M13 10V3L4 14h7v7l9-11h-7z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-                                                        </svg>
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-medium text-slate-200 group-hover:text-emerald-300 font-mono text-[11px] transition-colors leading-tight">
-                                                            {procName}
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5 text-[9.5px] font-mono text-slate-500">
-                                                            <span>{pid}</span>
-                                                            {(e.local as any)?.user && (
-                                                                <span className="text-cyan-400 font-medium bg-cyan-950/60 px-1 py-0.2 rounded border border-cyan-800/40">
-                                                                    {(e.local as any).user}
+                                        const renderDashboardRow = (ev: any, childIdx?: number) => {
+                                            const isChild = childIdx !== undefined;
+                                            const procName = ev.local?.process_name || 'System';
+                                            const pid = ev.local?.pid ? `PID-${ev.local.pid}` : 'PID-8476';
+                                            const dir = (ev.direction || 'outbound').toLowerCase();
+                                            const isInbound = dir === 'inbound';
+                                            const category = (ev.service?.category || 'TELEMETRY').toUpperCase();
+                                            const isAnomaly = Boolean(ev.anomaly?.is_anomaly);
+                                            const remoteTarget =
+                                                ev.asn?.org ||
+                                                ev.remote?.hostname ||
+                                                (ev.remote?.ip === '127.0.0.1' ? 'localhost' : ev.remote?.ip) ||
+                                                'localhost';
+                                            const port = ev.remote?.port || ev.local?.port || 443;
+                                            const isHttps = port === 443;
+                                            const protoStr = `${(ev.protocol || 'TCP').toUpperCase()} :${port}`;
+                                            const lastSeen = formatTimeAgo(ev.metrics?.last_seen, idx);
+
+                                            return (
+                                                <tr
+                                                    key={`dash-row-${group.groupKey}-${ev.id || 'e'}-${isChild ? `child-${childIdx}` : 'primary'}-${idx}`}
+                                                    onClick={() => ev.id && setSelectedId(ev.id)}
+                                                    className={`hover:bg-slate-800/30 transition-colors group cursor-pointer ${
+                                                        isChild ? 'bg-indigo-950/15' : ''
+                                                    }`}
+                                                >
+                                                    <td className="py-1.5 px-3 sm:px-4">
+                                                        <div className={`flex items-center gap-2.5 ${isChild ? 'pl-5' : ''}`}>
+                                                            {isChild ? (
+                                                                <span className="text-[10px] font-mono text-indigo-400 font-semibold shrink-0">
+                                                                    ↳ #{childIdx + 1}
                                                                 </span>
+                                                            ) : (
+                                                                <div className="w-6 h-6 rounded-md bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+                                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path d="M13 10V3L4 14h7v7l9-11h-7z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                                                                    </svg>
+                                                                </div>
                                                             )}
+                                                            <div>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="font-medium text-slate-200 group-hover:text-emerald-300 font-mono text-[11px] transition-colors leading-tight">
+                                                                        {procName}
+                                                                    </span>
+                                                                    {!isChild && nestedCount > 0 && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(clickEv) => toggleGroup(group.groupKey, clickEv)}
+                                                                            className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9.5px] font-mono font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/25 cursor-pointer"
+                                                                            title="Expand/collapse nested child connections"
+                                                                        >
+                                                                            {isExpanded ? (
+                                                                                <ChevronDown className="w-2.5 h-2.5" />
+                                                                            ) : (
+                                                                                <ChevronRight className="w-2.5 h-2.5" />
+                                                                            )}
+                                                                            +{nestedCount} nested
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-center gap-1.5 text-[9.5px] font-mono text-slate-500">
+                                                                    <span>{pid}</span>
+                                                                    {(ev.local as any)?.user && (
+                                                                        <span className="text-cyan-400 font-medium bg-cyan-950/60 px-1 py-0.2 rounded border border-cyan-800/40">
+                                                                            {(ev.local as any).user}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="py-1.5 px-2.5 text-slate-400 font-mono text-[10px]">{category}</td>
-                                            <td className="py-1.5 px-2.5">
-                                                {isAnomaly ? (
-                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-rose-500/10 text-rose-400 border border-rose-500/30">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" /> Threat
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Passed
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="py-1.5 px-2.5 text-slate-300 font-mono text-[10.5px] truncate max-w-[190px]">{remoteTarget}</td>
-                                            <td className="py-1.5 px-2.5 font-mono">
-                                                {isHttps ? (
-                                                    <span className="bg-cyan-950/60 border border-cyan-500/30 px-1.5 py-0.5 rounded text-[10px] text-cyan-300">
-                                                        {protoStr}
-                                                    </span>
-                                                ) : (
-                                                    <span className="bg-slate-900 border border-white/10 px-1.5 py-0.5 rounded text-[10px] text-slate-300">
-                                                        {protoStr}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="py-1.5 px-3 sm:px-4 text-right text-slate-400 font-mono text-[10px]">
-                                                {lastSeen}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
+                                                    </td>
+                                                    <td className="py-1.5 px-2.5 font-mono">
+                                                        {isInbound ? (
+                                                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                                                ↙ INBOUND
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                                                                ↗ OUTBOUND
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="py-1.5 px-2.5 text-slate-400 font-mono text-[10px]">{category}</td>
+                                                    <td className="py-1.5 px-2.5">
+                                                        {isAnomaly ? (
+                                                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" /> Threat
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Passed
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="py-1.5 px-2.5 text-slate-300 font-mono text-[10.5px] truncate max-w-[190px]">{remoteTarget}</td>
+                                                    <td className="py-1.5 px-2.5 font-mono">
+                                                        {isHttps ? (
+                                                            <span className="bg-cyan-950/60 border border-cyan-500/30 px-1.5 py-0.5 rounded text-[10px] text-cyan-300">
+                                                                {protoStr}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="bg-slate-900 border border-white/10 px-1.5 py-0.5 rounded text-[10px] text-slate-300">
+                                                                {protoStr}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="py-1.5 px-3 sm:px-4 text-right text-slate-400 font-mono text-[10px]">
+                                                        {lastSeen}
+                                                    </td>
+                                                    <td className="py-1.5 px-3 sm:px-4 text-right">
+                                                        <button
+                                                            type="button"
+                                                            onClick={(btnEv) => {
+                                                                btnEv.stopPropagation();
+                                                                const targetId = ev.id || 'default-inspect-1';
+                                                                setSelectedId(selectedId === targetId ? null : targetId);
+                                                            }}
+                                                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-mono font-semibold transition cursor-pointer shadow-xs ${
+                                                                selectedId === ev.id
+                                                                    ? 'bg-cyan-500 text-white font-bold ring-2 ring-cyan-400/50'
+                                                                    : 'bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30'
+                                                            }`}
+                                                            title="Inspect socket data and wire payloads"
+                                                        >
+                                                            <Binary className="w-2.5 h-2.5" />
+                                                            {selectedId === ev.id ? 'Close' : 'Inspect'}
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        };
+
+                                        return (
+                                            <Fragment key={`dash-fg-${group.groupKey}-${idx}`}>
+                                                {renderDashboardRow(e)}
+                                                {isExpanded &&
+                                                    group.children.map((child, cIdx) => renderDashboardRow(child, cIdx))}
+                                            </Fragment>
+                                        );
+                                    })
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -760,7 +998,7 @@ export function DashboardView() {
                     {/* Table Footer Pagination/Status */}
                     <div className="p-2 px-4 border-t border-white/5 bg-[#090f1a]/80 flex items-center justify-between text-[10.5px] text-slate-400">
                         <span className="font-mono text-[10px]">
-                            Showing {paginatedEvents.length} of {filteredEvents.length} components
+                            Showing {paginatedGroups.length} primary groups ({filteredEvents.length} total sockets)
                         </span>
                         <div className="flex items-center gap-1">
                             <button
@@ -802,11 +1040,12 @@ export function DashboardView() {
 
                         {/* Stream Timeline Items */}
                         <div className="space-y-2 font-mono">
-                            {streamItems.map((item) => (
+                            {streamItems.map((item, sIdx) => (
                                 <div
-                                    key={item.id}
-                                    onClick={() => setActiveView('table')}
+                                    key={`stream-${item.id}-${sIdx}`}
+                                    onClick={() => setSelectedId(String(item.id))}
                                     className="flex items-start gap-2.5 p-2 rounded-lg bg-[#090f1a] border border-white/5 hover:border-emerald-500/30 transition-all cursor-pointer"
+                                    title="Click to inspect payload stream"
                                 >
                                     <div className="w-5 h-5 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
