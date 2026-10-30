@@ -41,7 +41,7 @@
 
 ## 🚦 System Status & Verification
 
-- **Git Working Tree**: Root repository (`Antigravity DevEX/.git`) tracking `signalmap/`, `.agents/`, `AGENTS.md`, and `STATE.md` (remote: `origin/main` on `SignalMap-V2.git`)
+- **Git Working Tree**: Root repository (`Antigravity DevEX/.git`) tracking `signalmap/`, `.agents/`, `AGENTS.md`, and `STATE.md` (clean, committed & pushed remote: `origin/main` commit `07662c5`)
 - **Backend**: Ready (`python start.py --backend-only` or via unified launcher)
 - **Frontend**: Vite dev server configured on `:5173`, production bundle served on `:8765`
 - **Blockers / Open Issues**: None currently flagged.
