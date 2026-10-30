@@ -198,7 +198,12 @@ function easeOutCubic(t: number): number {
 export function LoadingScreen({ loaded = false, onComplete, manualDismiss = false }: LoadingScreenProps) {
     const mountRef = useRef<HTMLDivElement>(null);
     const onCompleteRef = useRef(onComplete);
-    onCompleteRef.current = onComplete;
+    const loadedRef = useRef(loaded);
+
+    useEffect(() => {
+        onCompleteRef.current = onComplete;
+        loadedRef.current = loaded;
+    }, [onComplete, loaded]);
 
     const [progress, setProgress] = useState(0);
     const [statusIndex, setStatusIndex] = useState(0);
@@ -228,8 +233,9 @@ export function LoadingScreen({ loaded = false, onComplete, manualDismiss = fals
             const now = performance.now();
             const elapsed = now - startTime;
             const rawProgress = Math.min(1, elapsed / TOTAL_DURATION_MS);
+            const currentPct = Math.floor(easeOutCubic(rawProgress) * 100);
 
-            setProgress(Math.floor(easeOutCubic(rawProgress) * 100));
+            setProgress(currentPct);
 
             const step = Math.min(
                 statusSteps.length - 1,
@@ -237,7 +243,7 @@ export function LoadingScreen({ loaded = false, onComplete, manualDismiss = fals
             );
             setStatusIndex(step);
 
-            if (elapsed >= TOTAL_DURATION_MS) {
+            if (elapsed >= TOTAL_DURATION_MS || (!manualDismiss && loadedRef.current && currentPct >= 65)) {
                 clearInterval(timer);
                 setProgress(100);
                 setStatusIndex(statusSteps.length - 1);
@@ -246,25 +252,13 @@ export function LoadingScreen({ loaded = false, onComplete, manualDismiss = fals
                     setIsExiting(true);
                     setTimeout(() => {
                         onCompleteRef.current();
-                    }, 280);
+                    }, 250);
                 }
             }
         }, 25);
 
         return () => clearInterval(timer);
     }, [manualDismiss, statusSteps.length]);
-
-    // Allow clicking anywhere at any time to dismiss immediately
-    useEffect(() => {
-        if (!manualDismiss && loaded && progress >= 65 && !isExiting) {
-            setProgress(100);
-            setIsExiting(true);
-            const t = setTimeout(() => {
-                onCompleteRef.current();
-            }, 250);
-            return () => clearTimeout(t);
-        }
-    }, [loaded, manualDismiss, progress, isExiting]);
 
     // ── Exact WebGL GPGPU Particle Shader from https://antigravity.google/ ──
     useEffect(() => {

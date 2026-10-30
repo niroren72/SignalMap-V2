@@ -24,10 +24,10 @@ If you haven't run the verification command in this message, you cannot claim it
 ```
 BEFORE claiming any status or expressing satisfaction:
 
-1. IDENTIFY: What command proves this claim?
-2. RUN: Execute the FULL command (fresh, complete)
-3. READ: Full output, check exit code, count failures
-4. VERIFY: Does output confirm the claim?
+1. IDENTIFY: What command proves this claim? (In SignalMap: ALWAYS run `python signalmap/verify.py`)
+2. RUN: Execute `python signalmap/verify.py` (which runs Schema Sync + Backend FastAPI TestClient Smoke Suite + Frontend oxlint + TypeScript & Vite Build + Live Server Health Check)
+3. READ: Full output, check exit code, count failures, and inspect active Uvicorn/Vite logs for `[Unhandled error]`, `[console.warn]`, or `Traceback`
+4. VERIFY: Does output confirm the claim across all 4 stages?
    - If NO: State actual status with evidence
    - If YES: State claim WITH evidence
 5. ONLY THEN: Make the claim
