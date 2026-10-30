@@ -195,8 +195,11 @@ function easeOutCubic(t: number): number {
     return 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 3);
 }
 
-export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScreenProps) {
+export function LoadingScreen({ loaded = false, onComplete, manualDismiss = false }: LoadingScreenProps) {
     const mountRef = useRef<HTMLDivElement>(null);
+    const onCompleteRef = useRef(onComplete);
+    onCompleteRef.current = onComplete;
+
     const [progress, setProgress] = useState(0);
     const [statusIndex, setStatusIndex] = useState(0);
     const [isExiting, setIsExiting] = useState(false);
@@ -212,13 +215,13 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
         if (isExiting) return;
         setIsExiting(true);
         setTimeout(() => {
-            onComplete();
-        }, 700);
-    }, [isExiting, onComplete]);
+            onCompleteRef.current();
+        }, 280);
+    }, [isExiting]);
 
-    // ── Progress Counter & Auto-Dismiss Timer ──
+    // ── Progress Counter & Fast Auto-Dismiss Timer ──
     useEffect(() => {
-        const TOTAL_DURATION_MS = manualDismiss ? 3200 : 5000;
+        const TOTAL_DURATION_MS = manualDismiss ? 1800 : 1100;
         const startTime = performance.now();
 
         const timer = setInterval(() => {
@@ -240,18 +243,28 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
                 setStatusIndex(statusSteps.length - 1);
 
                 if (!manualDismiss) {
+                    setIsExiting(true);
                     setTimeout(() => {
-                        setIsExiting(true);
-                        setTimeout(() => {
-                            onComplete();
-                        }, 700);
-                    }, 120);
+                        onCompleteRef.current();
+                    }, 280);
                 }
             }
         }, 25);
 
         return () => clearInterval(timer);
-    }, [onComplete, manualDismiss, statusSteps.length]);
+    }, [manualDismiss, statusSteps.length]);
+
+    // Allow clicking anywhere at any time to dismiss immediately
+    useEffect(() => {
+        if (!manualDismiss && loaded && progress >= 65 && !isExiting) {
+            setProgress(100);
+            setIsExiting(true);
+            const t = setTimeout(() => {
+                onCompleteRef.current();
+            }, 250);
+            return () => clearTimeout(t);
+        }
+    }, [loaded, manualDismiss, progress, isExiting]);
 
     // ── Exact WebGL GPGPU Particle Shader from https://antigravity.google/ ──
     useEffect(() => {
@@ -277,14 +290,21 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
         const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
         camera.position.z = 3.1;
 
-        const renderer = new THREE.WebGLRenderer({
-            antialias: true,
-            alpha: true,
-            powerPreference: 'high-performance',
-            preserveDrawingBuffer: false,
-            stencil: false,
-            precision: 'highp',
-        });
+        let renderer: THREE.WebGLRenderer;
+        try {
+            renderer = new THREE.WebGLRenderer({
+                antialias: false,
+                alpha: true,
+                powerPreference: 'default',
+                preserveDrawingBuffer: false,
+                stencil: false,
+                depth: false,
+                precision: 'highp',
+            });
+        } catch {
+            // Gracefully skip WebGL background if GPU context pool is exhausted
+            return;
+        }
         renderer.setSize(width, height);
         renderer.setPixelRatio(pixelRatio);
         renderer.autoClear = false;
@@ -292,6 +312,10 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
 
         // Ensure float render target extension is active
         const gl = renderer.getContext();
+        if (!gl) {
+            renderer.dispose();
+            return;
+        }
         gl.getExtension('EXT_color_buffer_float');
 
         // 2. Invisible Raycast Plane (12.5 x 12.5 at z=0) for exact 3D cursor projection
@@ -768,6 +792,11 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
             rt1.dispose();
             rt2.dispose();
             posTex.dispose();
+            try {
+                renderer.forceContextLoss();
+            } catch {
+                // ignore if already lost
+            }
             renderer.dispose();
             if (renderer.domElement.parentElement === container) {
                 container.removeChild(renderer.domElement);
@@ -777,10 +806,10 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
 
     return (
         <div
-            onClick={manualDismiss ? handleDismiss : undefined}
-            className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#070b12] text-slate-200 select-none overflow-hidden transition-all duration-700 ease-out ${
+            onClick={handleDismiss}
+            className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#070b12] text-slate-200 select-none overflow-hidden transition-all duration-300 ease-out cursor-pointer ${
                 isExiting ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
-            } ${manualDismiss ? 'cursor-pointer' : ''}`}
+            }`}
         >
             {/* ── Exact antigravity.google WebGL GPGPU Particle Field ── */}
             <div ref={mountRef} className="absolute inset-0 pointer-events-none z-20" />

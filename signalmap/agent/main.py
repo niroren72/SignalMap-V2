@@ -28,15 +28,29 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import config
 from .collectors.socket_collector import PsutilSocketCollector
+from .collectors.salesforce_collector import salesforce_collector
 from .enrichment import enricher
 from .store.sqlite_store import SQLiteStore
-from .api import rest, ws, upload, netutils, actions
+from .api import rest, ws, upload, netutils, actions, connectors
 
 # ── Application state ──────────────────────────────────────────────────
 
 store = SQLiteStore()
 _collector_task: asyncio.Task | None = None
 collector = PsutilSocketCollector(poll_interval=1.0)
+
+
+async def _process_external_event(event):
+    """Enrich, persist, and broadcast an event from an external cloud/SaaS connector."""
+    try:
+        enriched = enricher.enrich(event)
+        await store.append(enriched)
+        await ws.broadcast_event(enriched)
+    except Exception as exc:
+        print(f"* [Connector Warning] Failed to process external event: {exc}")
+
+
+salesforce_collector.set_event_callback(_process_external_event)
 
 
 async def _run_collector():
@@ -80,10 +94,15 @@ async def lifespan(app: FastAPI):
         _collector_task = asyncio.create_task(_run_mock())
         print("* Mock generator started")
 
+    if salesforce_collector.config.enabled:
+        await salesforce_collector.start()
+        print("* Salesforce Cloud Security collector resumed")
+
     print(f"* SignalMap backend running at http://localhost:{config.server.port}")
     yield
 
     # Shutdown
+    await salesforce_collector.stop()
     if _collector_task:
         _collector_task.cancel()
         try:
@@ -104,15 +123,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS for local dev (Vite on 5173)
+# CORS for local dev (Vite on any localhost port)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:5174",
+        "http://localhost:8765",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:5174",
+        "http://127.0.0.1:8765",
     ],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -124,6 +146,7 @@ app.include_router(ws.router)
 app.include_router(upload.router)
 app.include_router(netutils.router)
 app.include_router(actions.router)
+app.include_router(connectors.router)
 
 # Serve built frontend if exists
 frontend_dist = Path(__file__).resolve().parent.parent / "web" / "dist"
@@ -133,10 +156,10 @@ if frontend_dist.is_dir():
 
 def main():
     uvicorn.run(
-        "agent.main:app",
+        app,
         host=config.server.host,
         port=config.server.port,
-        reload=config.server.dev_mode,
+        reload=False,
         log_level="info",
     )
 

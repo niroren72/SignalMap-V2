@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useConnectionStore } from '../stores/connectionStore';
 import type { ConnectionEvent } from '@shared/types';
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.DEV ? 'http://127.0.0.1:8765/api' : '/api';
 
 export function useInitialEvents() {
     const setEvents = useConnectionStore((s) => s.setEvents);
@@ -70,6 +70,8 @@ export function useFilteredEvents(): ConnectionEvent[] {
                     collector === 'socket' ||
                     collector === 'netstat'
                         ? 'windows'
+                        : collector.startsWith('salesforce')
+                        ? 'salesforce'
                         : collector
                 );
                 if (plugin !== activeModule) return false;

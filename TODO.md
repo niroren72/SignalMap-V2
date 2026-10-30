@@ -43,9 +43,9 @@
 ---
 
 ## 🔌 Priority 2 — Multi-Source Module Connectors (`P2`)
-- [ ] **Salesforce Cloud Security Connector (`salesforce`)**:
-  - [ ] Build live OAuth 2.0 + REST connector for Salesforce `LoginHistory`, `ApiEvent`, and `ReportExport` streams (`signalmap/agent/collectors/salesforce_collector.py`).
-  - [ ] Add UI configuration modal in `ModulesView.tsx` for Salesforce instance URL & credentials.
+- [x] **Salesforce Cloud Security Connector (`salesforce`)**:
+  - [x] Build live OAuth 2.0 / SOAP Partner `login()` / Access Token / `sf` CLI + REST SOQL connector for Salesforce `LoginHistory` (`LoginGeo`), `AuthSession`, `SetupAuditTrail`, `ReportEvent`, `ApiEvent`, and `EventLogFile` streams (`signalmap/agent/collectors/salesforce_collector.py` & `signalmap/agent/api/connectors.py`).
+  - [x] Add interactive UI configuration modal (`SalesforceConfigModal.tsx`) in `ModulesView.tsx` for Salesforce instance URL, multi-mode authentication, live stream toggles, and on-demand sync.
 - [ ] **HRIS & Identity Mesh Connector (`hris` / `okta`)**:
   - [ ] Integrate Workday / BambooHR / Okta System Log webhook & polling collector to correlate network sockets with employee status (e.g., terminated/on-leave user alerts, impossible travel geo-logins).
 - [ ] **Cloud VPC Flow Logs Connector (`cloud` / `aws`)**:

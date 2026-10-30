@@ -1,3 +1,4 @@
+import { Component, type ReactNode } from 'react';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useInitialEvents } from './hooks/useConnections';
 import { useConnectionStore } from './stores/connectionStore';
@@ -17,6 +18,25 @@ import { ModulesView } from './components/ModulesView';
 import { DashboardView } from './components/DashboardView';
 
 import { LoadingScreen } from './components/LoadingScreen';
+
+class SafeErrorBoundary extends Component<
+    { children: ReactNode; onErrorFallback?: () => void; fallback?: ReactNode },
+    { hasError: boolean }
+> {
+    state = { hasError: false };
+    static getDerivedStateFromError() {
+        return { hasError: true };
+    }
+    componentDidCatch() {
+        this.props.onErrorFallback?.();
+    }
+    render() {
+        if (this.state.hasError) {
+            return this.props.fallback ?? null;
+        }
+        return this.props.children;
+    }
+}
 
 export default function App() {
     const {
@@ -38,11 +58,13 @@ export default function App() {
         >
             {/* ── Antigravity Loading Screen with SignalMap Logo & Flying Dots ── */}
             {showLoadingScreen && (
-                <LoadingScreen
-                    loaded={loaded}
-                    manualDismiss={loadingScreenManualDismiss}
-                    onComplete={() => setShowLoadingScreen(false)}
-                />
+                <SafeErrorBoundary onErrorFallback={() => setShowLoadingScreen(false)}>
+                    <LoadingScreen
+                        loaded={loaded}
+                        manualDismiss={loadingScreenManualDismiss}
+                        onComplete={() => setShowLoadingScreen(false)}
+                    />
+                </SafeErrorBoundary>
             )}
 
             {/* BEGIN: LeftIconSidebar */}

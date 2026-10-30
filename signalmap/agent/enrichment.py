@@ -241,10 +241,15 @@ class DataEnricher:
             if hostname:
                 event.remote.hostname = hostname
 
-        # 2. Add GeoIP info
-        geo = self._resolve_geo(ip)
-        if geo.lat is not None:
-            event.geo = geo
+        # 2. Add GeoIP info (preserve connector-provided GeoInfo if already populated)
+        if event.geo.lat is None:
+            geo = self._resolve_geo(ip)
+            if geo.lat is not None:
+                if not geo.country and event.geo.country:
+                    geo.country = event.geo.country
+                if not geo.city and event.geo.city:
+                    geo.city = event.geo.city
+                event.geo = geo
 
         # 3. Add ASN info
         asn = self._resolve_asn(ip)
@@ -273,8 +278,8 @@ class DataEnricher:
                 event.protocol = Protocol.WSS if event.remote.port in (443, 8443, 5228) else Protocol.WS
                 event.transport = event.transport or "tcp"
 
-        # 5. Add service classification based on hostname rules
-        if event.remote.hostname and self.rules:
+        # 5. Add service classification based on hostname rules (if not already set by a module connector)
+        if not event.service.name and event.remote.hostname and self.rules:
             for rule in self.rules:
                 if fnmatch.fnmatch(event.remote.hostname, rule.get("pattern", "")):
                     event.service.name = rule.get("name")
@@ -318,10 +323,16 @@ class DataEnricher:
             h = int(hashlib.md5(ip.encode()).hexdigest(), 16)
             lat = ((h % 10500) / 100.0) - 45.0
             lon = (((h >> 16) % 27000) / 100.0) - 130.0
-            event.geo = GeoInfo(lat=round(lat, 4), lon=round(lon, 4), country="Global", city="Internet Transit")
+            event.geo = GeoInfo(
+                lat=round(lat, 4),
+                lon=round(lon, 4),
+                country=event.geo.country or "Global",
+                city=event.geo.city or "Internet Transit",
+            )
 
-        # 8. Run Anomaly & Threat Detection
-        event.anomaly = anomaly_engine.inspect(event)
+        # 8. Run Anomaly & Threat Detection (preserve connector-level anomalies if already flagged)
+        if not (event.anomaly and event.anomaly.is_anomaly):
+            event.anomaly = anomaly_engine.inspect(event)
 
         return event
 

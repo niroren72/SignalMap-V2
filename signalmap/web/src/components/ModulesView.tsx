@@ -1,7 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SYSTEM_MODULES } from '../types/modules';
 import { useConnectionStore } from '../stores/connectionStore';
 import type { ConnectionEvent } from '@shared/types';
+import {
+    SalesforceConfigModal,
+    sfApiFetch,
+    type SalesforceConnectorStatus,
+} from './SalesforceConfigModal';
 import {
     Monitor,
     Cloud,
@@ -13,6 +18,8 @@ import {
     Table,
     Download,
     Database,
+    Settings,
+    RefreshCw,
 } from 'lucide-react';
 
 function getModuleIcon(id: string) {
@@ -177,6 +184,17 @@ export function ModulesView() {
     const [selectedTab, setSelectedTab] = useState<'all' | 'installed' | 'available' | 'coming_soon'>('installed');
     const [selectedModuleId, setSelectedModuleId] = useState<string>('windows');
     const [sampleLoaded, setSampleLoaded] = useState<Record<string, boolean>>({});
+    const [sfModalOpen, setSfModalOpen] = useState(false);
+    const [sfStatus, setSfStatus] = useState<SalesforceConnectorStatus | null>(null);
+
+    useEffect(() => {
+        sfApiFetch('/api/connectors/salesforce/status')
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                if (data) setSfStatus(data);
+            })
+            .catch(() => {});
+    }, []);
 
     // Interactive module configuration toggles
     const [configToggles, setConfigToggles] = useState<Record<string, { socketPolling: boolean; remediation: boolean; dnsCapture: boolean; auditLog: boolean }>>({
@@ -219,6 +237,13 @@ export function ModulesView() {
                     e.source_collector === 'netstat' ||
                     e.source_collector === 'windows_evtx' ||
                     (e as { source_plugin?: string }).source_plugin === 'windows'
+            ).length;
+        }
+        if (modId === 'salesforce') {
+            return events.filter(
+                (e) =>
+                    e.source_collector?.startsWith('salesforce') ||
+                    (e as { source_plugin?: string }).source_plugin === 'salesforce'
             ).length;
         }
         return events.filter(
@@ -267,11 +292,15 @@ export function ModulesView() {
             {
                 id: 'salesforce',
                 title: 'Salesforce',
-                statusBadge: 'Available',
+                statusBadge: sfStatus?.connected ? 'Installed' : 'Available',
                 statusColor: 'var(--color-status-ok)',
-                description: 'Pull critical CRM security and access logs',
-                meta: 'v1.1 | Ready',
-                actionLabel: sampleLoaded['salesforce'] ? 'Ingested' : 'Connect',
+                description: sfStatus?.connected
+                    ? `Connected to ${sfStatus.org_name || 'Tenant'} (${sfStatus.instance_url})`
+                    : 'Pull critical CRM security, LoginHistory, and Event Monitoring logs',
+                meta: sfStatus?.connected
+                    ? `v1.1 | ${sfStatus.total_ingested} events`
+                    : 'v1.1 | Ready',
+                actionLabel: sfStatus?.connected ? 'Configure / Sync' : 'Connect Tenant',
                 icon: Cloud,
             },
             {
@@ -399,7 +428,12 @@ export function ModulesView() {
                                     {!isComingSoon ? (
                                         <button
                                             onClick={() => {
-                                                if (mod.id === 'salesforce' || mod.id === 'hris') {
+                                                if (mod.id === 'salesforce') {
+                                                    setSfModalOpen(true);
+                                                    setActiveModule('salesforce');
+                                                    return;
+                                                }
+                                                if (mod.id === 'hris') {
                                                     handleLoadSampleEvents(mod.id);
                                                 }
                                                 setActiveModule(mod.id);
@@ -421,6 +455,11 @@ export function ModulesView() {
                         );
                     })}
                 </div>
+                <SalesforceConfigModal
+                    isOpen={sfModalOpen}
+                    onClose={() => setSfModalOpen(false)}
+                    onStatusUpdate={setSfStatus}
+                />
             </div>
         );
     }
@@ -574,7 +613,13 @@ export function ModulesView() {
                                     </span>
 
                                     <span style={{ color: 'var(--color-text-muted)' }}>
-                                        {mod.status === 'active' ? 'Live (2s)' : '—'}
+                                        {mod.id === 'salesforce' && sfStatus?.connected
+                                            ? sfStatus.polling
+                                                ? `Live (${sfStatus.poll_interval}s)`
+                                                : 'Connected'
+                                            : mod.status === 'active'
+                                            ? 'Live (2s)'
+                                            : '—'}
                                     </span>
 
                                     <span style={{ color: 'var(--color-text-muted)' }}>
@@ -635,6 +680,49 @@ export function ModulesView() {
                     <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
                         {selectedMod.description}
                     </p>
+
+                    {/* Live Salesforce Tenant Connection Card */}
+                    {selectedMod.id === 'salesforce' && (
+                        <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-3 flex flex-col gap-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-mono uppercase font-bold text-sky-300 flex items-center gap-1.5">
+                                    <Cloud className="w-3.5 h-3.5" />
+                                    {sfStatus?.connected ? sfStatus.org_name || 'Connected Tenant' : 'Salesforce Tenant Auth'}
+                                </span>
+                                <span
+                                    className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full border font-semibold ${
+                                        sfStatus?.connected
+                                            ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-300'
+                                            : 'bg-slate-800 border-slate-700 text-slate-400'
+                                    }`}
+                                >
+                                    {sfStatus?.connected ? (sfStatus.polling ? 'LIVE POLLING' : 'CONNECTED') : 'NOT CONFIGURED'}
+                                </span>
+                            </div>
+
+                            {sfStatus?.connected ? (
+                                <div className="text-[10.5px] font-mono text-slate-300 space-y-0.5">
+                                    <div className="truncate text-sky-200">{sfStatus.instance_url}</div>
+                                    <div className="text-slate-400">
+                                        User: <span className="text-slate-200">{sfStatus.username}</span> ·{' '}
+                                        <span className="text-emerald-300">{sfStatus.total_ingested} evts</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-[10.5px] font-mono text-slate-400 leading-snug">
+                                    Connect your live Salesforce org via Username/Password (SOAP/OAuth), Access Token, or Salesforce CLI.
+                                </p>
+                            )}
+
+                            <button
+                                onClick={() => setSfModalOpen(true)}
+                                className="w-full py-1.5 px-3 rounded-lg text-xs font-mono font-semibold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/40 flex items-center justify-center gap-1.5 transition"
+                            >
+                                <Settings className="w-3.5 h-3.5" />
+                                <span>{sfStatus?.connected ? 'Tenant Settings & Sync' : 'Connect Salesforce Tenant'}</span>
+                            </button>
+                        </div>
+                    )}
 
                     {/* Data Sources In Use */}
                     <div className="flex flex-col gap-2 pt-2 border-t" style={{ borderColor: 'var(--color-border)' }}>
@@ -743,6 +831,15 @@ export function ModulesView() {
 
                     {/* Actions */}
                     <div className="flex flex-col gap-2 pt-3 border-t mt-auto" style={{ borderColor: 'var(--color-border)' }}>
+                        {selectedMod.id === 'salesforce' && (
+                            <button
+                                onClick={() => setSfModalOpen(true)}
+                                className="w-full py-1.5 px-3 rounded-lg text-xs font-mono font-semibold border flex items-center justify-center gap-1.5 transition bg-sky-500/15 border-sky-400/40 text-sky-300 hover:bg-sky-500/25"
+                            >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                                <span>{sfStatus?.connected ? 'Configure & Sync Tenant' : 'Connect Live Salesforce Tenant'}</span>
+                            </button>
+                        )}
                         {(selectedMod.id === 'salesforce' || selectedMod.id === 'hris') && (
                             <button
                                 onClick={() => handleLoadSampleEvents(selectedMod.id)}
@@ -793,6 +890,11 @@ export function ModulesView() {
                     </div>
                 </div>
             </div>
+            <SalesforceConfigModal
+                isOpen={sfModalOpen}
+                onClose={() => setSfModalOpen(false)}
+                onStatusUpdate={setSfStatus}
+            />
         </div>
     );
 }

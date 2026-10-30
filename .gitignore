@@ -41,6 +41,8 @@ signalmap.db
 .env.*.local
 *.pem
 *.key
+**/data/*_connector.json
+*salesforce_connector.json
 
 # Logs
 *.log

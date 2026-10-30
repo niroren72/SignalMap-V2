@@ -78,6 +78,46 @@ export function getDataSourceMeta(e: ConnectionEvent): DataSourceMeta {
                 icon: '☁️',
                 badgeClass: 'bg-sky-950/60 border-sky-500/35 text-sky-300',
             };
+        case 'salesforce_login':
+            return {
+                id: 'salesforce_login',
+                label: 'SF LoginHistory',
+                sublabel: 'salesforce_login',
+                icon: '☁️',
+                badgeClass: 'bg-sky-950/60 border-sky-500/35 text-sky-300',
+            };
+        case 'salesforce_session':
+            return {
+                id: 'salesforce_session',
+                label: 'SF AuthSession',
+                sublabel: 'salesforce_session',
+                icon: '🔐',
+                badgeClass: 'bg-indigo-950/60 border-indigo-500/35 text-indigo-300',
+            };
+        case 'salesforce_audit':
+            return {
+                id: 'salesforce_audit',
+                label: 'SF Setup Audit',
+                sublabel: 'salesforce_audit',
+                icon: '🛡️',
+                badgeClass: 'bg-amber-950/60 border-amber-500/35 text-amber-300',
+            };
+        case 'salesforce_api':
+            return {
+                id: 'salesforce_api',
+                label: 'SF API Event',
+                sublabel: 'salesforce_api',
+                icon: '⚡',
+                badgeClass: 'bg-cyan-950/60 border-cyan-500/35 text-cyan-300',
+            };
+        case 'salesforce_report':
+            return {
+                id: 'salesforce_report',
+                label: 'SF Report DLP',
+                sublabel: 'salesforce_report',
+                icon: '📊',
+                badgeClass: 'bg-rose-950/60 border-rose-500/35 text-rose-300',
+            };
         case 'hris':
             return {
                 id: 'hris',
@@ -154,6 +194,8 @@ export function ConnectionTable() {
                     collector === 'socket' ||
                     collector === 'netstat'
                         ? 'windows'
+                        : collector.startsWith('salesforce')
+                        ? 'salesforce'
                         : collector
                 );
                 if (plugin !== activeModule) return false;

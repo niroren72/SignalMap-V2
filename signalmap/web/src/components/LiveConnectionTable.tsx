@@ -33,6 +33,8 @@ export function LiveConnectionTable() {
                     collector === 'socket' ||
                     collector === 'netstat'
                         ? 'windows'
+                        : collector.startsWith('salesforce')
+                        ? 'salesforce'
                         : collector
                 );
                 if (plugin !== activeModule) return false;
