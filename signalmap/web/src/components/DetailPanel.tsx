@@ -6,6 +6,10 @@ import {
     maskTextWithPII,
 } from '../utils/payloadInspector';
 import {
+    generateAISummary,
+    type AISummaryResult,
+} from '../utils/aiForensics';
+import {
     ShieldAlert,
     ShieldCheck,
     AlertTriangle,
@@ -33,6 +37,9 @@ import {
     Filter,
     Database,
     Sparkles,
+    Brain,
+    Cpu,
+    RefreshCw,
 } from 'lucide-react';
 
 const DEFAULT_FALLBACK_EVENT: ConnectionEvent = {
@@ -60,7 +67,7 @@ export function DetailPanel() {
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
     // Deep Inspection & Visibility Suite State
-    const [activeTab, setActiveTab] = useState<'overview' | 'stream' | 'headers' | 'raw'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'ai' | 'stream' | 'headers' | 'raw'>('overview');
     const [dockPosition, setDockPosition] = useState<'right' | 'bottom'>('right');
     const [isExpanded, setIsExpanded] = useState(false);
     const [streamFilter, setStreamFilter] = useState<'all' | 'outbound' | 'inbound'>('all');
@@ -68,13 +75,13 @@ export function DetailPanel() {
     const [maskPII, setMaskPII] = useState(true);
     const [searchPayload, setSearchPayload] = useState('');
     const [showPiiDetails, setShowPiiDetails] = useState(false);
+    const [aiRefreshKey, setAiRefreshKey] = useState(0);
 
     // Find event in events array or fallback gracefully so inspector always displays when invoked
     const event = useMemo(() => {
         if (!selectedId) return null;
         const found = events.find((e) => e.id === selectedId);
         if (found) return found;
-        // If selectedId was a fallback mock or custom inspect ID
         return { ...DEFAULT_FALLBACK_EVENT, id: selectedId };
     }, [events, selectedId]);
 
@@ -83,6 +90,13 @@ export function DetailPanel() {
         if (!event) return null;
         return dissectConnectionStream(event as any);
     }, [event]);
+
+    // Generate AI Forensics Summary
+    const aiSummary: AISummaryResult | null = useMemo(() => {
+        if (!event) return null;
+        return generateAISummary(event as any, dissection);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [event, dissection, aiRefreshKey]);
 
     // Check if current remote IP is already blocked
     useEffect(() => {
@@ -235,6 +249,7 @@ export function DetailPanel() {
                         protocol: event.protocol,
                         direction: event.direction,
                         metrics: event.metrics,
+                        aiSummary,
                         dissection: {
                             protocolMeta: dissection.protocolMeta,
                             piiCount: totalPiiCount,
@@ -260,6 +275,18 @@ export function DetailPanel() {
         URL.revokeObjectURL(url);
     };
 
+    // Download AI Incident Report as Markdown
+    const handleDownloadMarkdown = () => {
+        if (!aiSummary) return;
+        const blob = new Blob([aiSummary.markdownReport], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `AI-Forensic-Report-${event.id || 'incident'}.md`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
     // Copy as cURL
     const handleCopyCurl = () => {
         const host = event.remote?.hostname || event.remote?.ip || 'localhost';
@@ -275,10 +302,10 @@ export function DetailPanel() {
     const isDockedBottom = dockPosition === 'bottom';
     const containerClasses = isDockedBottom
         ? `fixed bottom-0 left-0 right-0 z-50 flex flex-col shadow-2xl animate-slide-in border-t backdrop-blur-2xl transition-all duration-300 ${
-              isExpanded ? 'h-[640px] max-h-[92vh]' : 'h-[420px] max-h-[80vh]'
+              isExpanded ? 'h-[640px] max-h-[92vh]' : 'h-[440px] max-h-[82vh]'
           }`
         : `fixed top-0 bottom-0 right-0 z-50 flex flex-col shadow-2xl animate-slide-in border-l backdrop-blur-2xl transition-all duration-300 ${
-              isExpanded ? 'w-[840px] max-w-[95vw]' : 'w-[500px] max-w-full'
+              isExpanded ? 'w-[860px] max-w-[95vw]' : 'w-[520px] max-w-full'
           }`;
 
     return (
@@ -315,6 +342,20 @@ export function DetailPanel() {
                                 <span className="flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
                                     <Lock className="w-2.5 h-2.5 text-amber-400" />
                                     {totalPiiCount} PII Found
+                                </span>
+                            )}
+                            {aiSummary && (
+                                <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                                    aiSummary.riskLevel === 'Critical Alert'
+                                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                                        : aiSummary.riskLevel === 'High Risk'
+                                        ? 'bg-orange-500/20 text-orange-300 border-orange-500/40'
+                                        : aiSummary.riskLevel === 'Suspicious'
+                                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                        : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                }`}>
+                                    <Brain className="w-2.5 h-2.5" />
+                                    AI: {aiSummary.riskLevel}
                                 </span>
                             )}
                         </div>
@@ -381,6 +422,21 @@ export function DetailPanel() {
                         >
                             <Layers className="w-3.5 h-3.5" />
                             <span>Overview</span>
+                        </button>
+
+                        <button
+                            onClick={() => setActiveTab('ai')}
+                            className={`flex items-center gap-1.5 py-2 px-2.5 border-b-2 font-medium transition-colors cursor-pointer ${
+                                activeTab === 'ai'
+                                    ? 'border-purple-400 text-purple-300 shadow-sm'
+                                    : 'border-transparent text-slate-400 hover:text-purple-300'
+                            }`}
+                        >
+                            <Brain className="w-3.5 h-3.5 text-purple-400" />
+                            <span>AI Forensics</span>
+                            <span className="px-1.5 py-0.2 rounded text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                AI
+                            </span>
                         </button>
 
                         <button
@@ -467,9 +523,92 @@ export function DetailPanel() {
 
                 {/* ── Main Tab Contents ── */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {/* TAB 1: OVERVIEW */}
+                    {/* TAB 1: OVERVIEW (WITH HERO AI BRIEFING CARD) */}
                     {activeTab === 'overview' && (
                         <div className="space-y-3.5 text-sm">
+                            {/* Hero AI Cyber Defense Briefing Card */}
+                            {aiSummary && (
+                                <div className={`p-3.5 rounded-xl border transition-all duration-300 relative overflow-hidden ${
+                                    aiSummary.riskLevel === 'Critical Alert'
+                                        ? 'bg-rose-950/40 border-rose-500/60 shadow-[0_0_24px_rgba(244,63,94,0.25)]'
+                                        : aiSummary.riskLevel === 'High Risk'
+                                        ? 'bg-orange-950/40 border-orange-500/60 shadow-[0_0_20px_rgba(249,115,22,0.2)]'
+                                        : aiSummary.riskLevel === 'Suspicious'
+                                        ? 'bg-amber-950/30 border-amber-500/50 shadow-[0_0_16px_rgba(245,158,11,0.15)]'
+                                        : 'bg-[#0c1626] border-emerald-500/40 shadow-[0_0_16px_rgba(16,185,129,0.15)]'
+                                }`}>
+                                    <div className="flex items-center justify-between gap-2 mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                                                aiSummary.riskLevel === 'Critical Alert' || aiSummary.riskLevel === 'High Risk'
+                                                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                                    : aiSummary.riskLevel === 'Suspicious'
+                                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                            }`}>
+                                                <Brain className="w-3.5 h-3.5 animate-pulse" />
+                                            </div>
+                                            <div>
+                                                <span className="text-[10px] uppercase font-mono tracking-wider font-bold text-slate-400">
+                                                    AI Cyber Defense Summary
+                                                </span>
+                                                <div className="text-xs font-bold text-white flex items-center gap-1.5 mt-0.5">
+                                                    <span>{aiSummary.verdictTitle}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-1.5">
+                                            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                                                aiSummary.riskLevel === 'Critical Alert'
+                                                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                                                    : aiSummary.riskLevel === 'High Risk'
+                                                    ? 'bg-orange-500/20 text-orange-300 border-orange-500/40'
+                                                    : aiSummary.riskLevel === 'Suspicious'
+                                                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                            }`}>
+                                                {aiSummary.riskLevel} ({aiSummary.riskScore}/100)
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Executive Summary Paragraph */}
+                                    <p className="text-xs text-slate-200 font-sans leading-relaxed mb-2.5 bg-black/30 p-2.5 rounded-lg border border-white/5">
+                                        {aiSummary.executiveSummary}
+                                    </p>
+
+                                    {/* Card Footer: Tags & Deep AI Tab Link */}
+                                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-white/5">
+                                        <div className="flex flex-wrap gap-1">
+                                            {aiSummary.behaviorTags.map((t) => (
+                                                <span key={t} className="text-[9.5px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-white/5">
+                                                    #{t}
+                                                </span>
+                                            ))}
+                                        </div>
+
+                                        <div className="flex items-center gap-1.5">
+                                            <button
+                                                onClick={() => copyToClipboard(aiSummary.markdownReport, 'ai-report')}
+                                                className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-[10px] font-mono border border-white/5 transition cursor-pointer"
+                                                title="Copy AI Incident Report as Markdown"
+                                            >
+                                                {copiedField === 'ai-report' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-slate-400" />}
+                                                <span>{copiedField === 'ai-report' ? 'Copied' : 'Copy Report'}</span>
+                                            </button>
+                                            <button
+                                                onClick={() => setActiveTab('ai')}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 text-[10.5px] font-mono font-semibold border border-purple-500/30 transition cursor-pointer"
+                                            >
+                                                <span>Full AI Forensics</span>
+                                                <span>→</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Threat & Anomaly Assessment */}
                             {isThreat && event.anomaly && (
                                 <div className="p-3 rounded-xl bg-rose-950/30 border border-rose-500/50 space-y-2 shadow-[0_0_20px_rgba(244,63,94,0.15)]">
@@ -753,7 +892,192 @@ export function DetailPanel() {
                         </div>
                     )}
 
-                    {/* TAB 2: DATA STREAM & PAYLOAD (HEX & ASCII + PII) */}
+                    {/* TAB 2: DEDICATED FULL AI FORENSICS SUITE */}
+                    {activeTab === 'ai' && aiSummary && (
+                        <div className="space-y-4 font-mono text-xs">
+                            {/* AI Header & Risk Metrics */}
+                            <div className="p-4 rounded-xl border border-purple-500/40 bg-purple-950/20 shadow-xl space-y-3">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-7 h-7 rounded-lg bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300">
+                                            <Brain className="w-4 h-4 animate-pulse" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-bold text-white font-sans">{aiSummary.verdictTitle}</h4>
+                                            <span className="text-[10px] text-purple-300 font-mono">
+                                                Generated: {aiSummary.generatedAt} • SignalMap Neural Guard
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setAiRefreshKey((k) => k + 1)}
+                                            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-white/5 transition cursor-pointer"
+                                            title="Re-Analyze Connection"
+                                        >
+                                            <RefreshCw className="w-3 h-3" />
+                                        </button>
+                                        <button
+                                            onClick={handleDownloadMarkdown}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/40 transition cursor-pointer text-[10.5px]"
+                                            title="Export AI Report as Markdown"
+                                        >
+                                            <Download className="w-3 h-3" />
+                                            <span>Export (.md)</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Risk & Confidence Gauges */}
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-center font-mono">
+                                    <div className="p-2 rounded-lg bg-black/40 border border-white/5">
+                                        <div className="text-[9.5px] text-slate-400">Risk Assessment</div>
+                                        <div className={`text-sm font-bold mt-0.5 ${
+                                            aiSummary.riskLevel === 'Critical Alert' ? 'text-red-400' :
+                                            aiSummary.riskLevel === 'High Risk' ? 'text-rose-400' :
+                                            aiSummary.riskLevel === 'Suspicious' ? 'text-amber-400' :
+                                            'text-emerald-400'
+                                        }`}>
+                                            {aiSummary.riskLevel}
+                                        </div>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-black/40 border border-white/5">
+                                        <div className="text-[9.5px] text-slate-400">Risk Score</div>
+                                        <div className="text-sm font-bold text-white mt-0.5">
+                                            {aiSummary.riskScore} <span className="text-[10px] text-slate-400">/ 100</span>
+                                        </div>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-black/40 border border-white/5">
+                                        <div className="text-[9.5px] text-slate-400">Model Confidence</div>
+                                        <div className="text-sm font-bold text-cyan-300 mt-0.5">
+                                            {aiSummary.confidenceScore}%
+                                        </div>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-black/40 border border-white/5">
+                                        <div className="text-[9.5px] text-slate-400">Exfiltration Risk</div>
+                                        <div className={`text-sm font-bold mt-0.5 ${aiSummary.isExfiltrationRisk ? 'text-rose-400' : 'text-emerald-400'}`}>
+                                            {aiSummary.isExfiltrationRisk ? 'ELEVATED' : 'NOMINAL'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* MITRE ATT&CK Matrix Card (if applicable) */}
+                            {aiSummary.mitreAttack && (
+                                <div className="p-3.5 rounded-xl border border-rose-500/40 bg-rose-950/20 space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] uppercase font-bold text-rose-300 flex items-center gap-1.5">
+                                            <ShieldAlert className="w-3.5 h-3.5" />
+                                            MITRE ATT&CK Matrix Correlation
+                                        </span>
+                                        <span className="px-2 py-0.2 rounded font-mono text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                                            {aiSummary.mitreAttack.id}
+                                        </span>
+                                    </div>
+                                    <div className="text-xs text-slate-200">
+                                        <strong>Tactic:</strong> {aiSummary.mitreAttack.tactic} • <strong>Technique:</strong> {aiSummary.mitreAttack.technique}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Four Pillars of Deep Investigation */}
+                            <div className="space-y-2.5">
+                                <span className="text-[10.5px] uppercase font-semibold text-slate-400 tracking-wider">
+                                    Four Pillars of Forensic Investigation
+                                </span>
+
+                                {/* Pillar 1: Process Attribution */}
+                                <div className="p-3 rounded-xl border border-white/10 bg-[#0c1322] space-y-1">
+                                    <div className="text-[10px] uppercase font-bold text-cyan-400 flex items-center gap-1.5">
+                                        <Cpu className="w-3.5 h-3.5" />
+                                        1. Local Process & Host Execution
+                                    </div>
+                                    <p className="text-slate-300 text-xs font-sans leading-relaxed pt-0.5">
+                                        {aiSummary.fourPillars.processVerdict}
+                                    </p>
+                                </div>
+
+                                {/* Pillar 2: Network & Geopolitical Routing */}
+                                <div className="p-3 rounded-xl border border-white/10 bg-[#0c1322] space-y-1">
+                                    <div className="text-[10px] uppercase font-bold text-indigo-400 flex items-center gap-1.5">
+                                        <Globe className="w-3.5 h-3.5" />
+                                        2. Network Routing & Destination Profile
+                                    </div>
+                                    <p className="text-slate-300 text-xs font-sans leading-relaxed pt-0.5">
+                                        {aiSummary.fourPillars.networkVerdict}
+                                    </p>
+                                </div>
+
+                                {/* Pillar 3: Data Moving & PII Inspection */}
+                                <div className="p-3 rounded-xl border border-white/10 bg-[#0c1322] space-y-1">
+                                    <div className="text-[10px] uppercase font-bold text-amber-400 flex items-center gap-1.5">
+                                        <Lock className="w-3.5 h-3.5" />
+                                        3. Wire Throughput & Sensitive PII Inspection
+                                    </div>
+                                    <p className="text-slate-300 text-xs font-sans leading-relaxed pt-0.5">
+                                        {aiSummary.fourPillars.dataAndPiiVerdict}
+                                    </p>
+                                </div>
+
+                                {/* Pillar 4: Defensive Remediation */}
+                                <div className="p-3 rounded-xl border border-white/10 bg-[#0c1322] space-y-1">
+                                    <div className="text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1.5">
+                                        <ShieldCheck className="w-3.5 h-3.5" />
+                                        4. Security Guidance & Defensive Protocol
+                                    </div>
+                                    <p className="text-slate-300 text-xs font-sans leading-relaxed pt-0.5">
+                                        {aiSummary.fourPillars.defensiveAction}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Recommended Action Checklist */}
+                            <div className="p-3.5 rounded-xl border border-white/10 bg-[#0c1322] space-y-2">
+                                <div className="text-[10px] uppercase font-bold text-slate-400">
+                                    AI Recommended Action Protocol
+                                </div>
+                                <div className="space-y-1.5 font-sans text-xs">
+                                    {aiSummary.recommendedActions.map((act, aIdx) => (
+                                        <div key={aIdx} className="flex items-start gap-2 p-1.5 rounded bg-[#090f1a] border border-white/5">
+                                            <span className="text-cyan-400 font-bold shrink-0 mt-0.5">[{aIdx + 1}]</span>
+                                            <span className="text-slate-200">{act}</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Direct Mitigation Trigger Buttons */}
+                                <div className="pt-2 border-t border-white/5 flex flex-wrap gap-2">
+                                    {event.local?.pid != null && !isProtectedPid && (
+                                        <button
+                                            onClick={handleKillProcess}
+                                            disabled={actionLoading}
+                                            className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                                        >
+                                            <AlertTriangle className="w-3.5 h-3.5" />
+                                            <span>Terminate Process (PID {event.local.pid})</span>
+                                        </button>
+                                    )}
+                                    {event.remote?.ip && !event.remote.ip.startsWith('127.') && (
+                                        <button
+                                            onClick={handleToggleBlockIp}
+                                            disabled={actionLoading}
+                                            className={`px-3 py-1.5 rounded-lg border font-mono text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                                                isBlocked
+                                                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500'
+                                                    : 'bg-rose-950/80 hover:bg-rose-900 border-rose-500/50 text-rose-200'
+                                            }`}
+                                        >
+                                            <ShieldCheck className="w-3.5 h-3.5" />
+                                            <span>{isBlocked ? `Unblock IP (${event.remote.ip})` : `Block IP in Firewall (${event.remote.ip})`}</span>
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* TAB 3: DATA STREAM & PAYLOAD (HEX & ASCII + PII) */}
                     {activeTab === 'stream' && (
                         <div className="space-y-3 font-mono text-xs">
                             {/* Stream Toolbar */}
@@ -982,7 +1306,7 @@ export function DetailPanel() {
                         </div>
                     )}
 
-                    {/* TAB 3: PROTOCOL & HEADERS */}
+                    {/* TAB 4: PROTOCOL & HEADERS */}
                     {activeTab === 'headers' && (
                         <div className="space-y-3.5 text-xs font-mono">
                             {/* Protocol Architecture Card */}
@@ -1099,7 +1423,7 @@ export function DetailPanel() {
                         </div>
                     )}
 
-                    {/* TAB 4: RAW JSON & FORENSICS */}
+                    {/* TAB 5: RAW JSON & FORENSICS */}
                     {activeTab === 'raw' && (
                         <div className="space-y-3 font-mono text-xs">
                             <div className="flex items-center justify-between">

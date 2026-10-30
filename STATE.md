@@ -12,7 +12,9 @@
 - **Key Modules**:
   - `agent/`: Python daemon (FastAPI, WebSockets, `psutil`, GeoIP2, `aiosqlite`, enrichment pipeline)
   - `web/`: React 18 + Vite frontend (3D Globe via `globe.gl`, 3D Topology via `react-force-graph-3d`, Connections Grid, Telemetry detail panel)
-- **Recent Focus Area**: Deep Data Inspection & Data Visibility Suite in `DetailPanel.tsx` (bidirectional hex dumps, PII scanner, side/bottom docking, click-to-filter); added dedicated "Inspect Suite" button in Header toolbar, Action column "🔬 Inspect" buttons in DashboardView & ConnectionTable; ensured `cursor-pointer` (hand cursor) on all clickable elements; and resolved duplicate React key errors.
+- **Recent Focus Area**: Deep Data Inspection & Data Visibility Suite in `DetailPanel.tsx` and automated AI Forensics Incident Briefing (`aiForensics.ts`). Integrated Hero AI Briefing Card on Overview tab and dedicated 5th tab `🧠 AI Forensics` with 4-pillar forensic breakdown, MITRE ATT&CK mapping, threat scoring (0–100), confidence rating, behavior tagging, direct remediation triggers (`Terminate PID`, `Block IP in Firewall`), and 1-click Markdown export. Synchronized active cluster pulse indicator colors in Header.
+- `signalmap/web/src/utils/aiForensics.ts` & `signalmap/web/src/components/DetailPanel.tsx` (Built instant zero-latency AI Forensics Engine calculating 0-100 risk scores, confidence rating, MITRE ATT&CK mapping e.g. T1041/T1059/T1071, 4-pillar verdicts across Process Attribution, Network Context, Wire/PII Forensics, and Defensive Protocol; added Hero AI Briefing Card to Overview tab, dedicated 5th `🧠 AI Forensics` tab, one-click Markdown export, and live re-analysis trigger)
+- `signalmap/web/src/components/Header.tsx` (Synchronized cluster pulse indicator: emerald for 'all', cyan for active module clusters matching screenshot)
 
 ---
 

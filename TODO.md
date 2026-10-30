@@ -19,7 +19,8 @@
 
 ## 🔥 Priority 1 — Core Windows Telemetry & Deep Visibility (`P1`)
 - [x] **Deep Data Inspection & Data Visibility Suite**:
-  - [x] **Multi-Tab Event Inspector (`DetailPanel.tsx` & Telemetry Grid)**: Added structured inspection tabs for *Formatted Overview*, *Payload Stream (Hex & ASCII)*, *Protocol / TLS / HTTP / DNS Headers*, and *Raw JSON & Forensics*.
+  - [x] **Multi-Tab Event Inspector (`DetailPanel.tsx` & Telemetry Grid)**: Added structured inspection tabs for *Formatted Overview*, *AI Forensics*, *Payload Stream (Hex & ASCII)*, *Protocol / TLS / HTTP / DNS Headers*, and *Raw JSON & Forensics*.
+  - [x] **AI Forensics & Incident Briefing Engine (`aiForensics.ts`)**: Built instant, zero-latency hybrid heuristic AI intelligence engine analyzing process reputation, port/protocol, GeoIP/ASN, wire throughput, and sensitive PII findings. Features Hero AI Briefing Card on Overview tab, 5th tab `🧠 AI Forensics`, MITRE ATT&CK Matrix mapping (`T1041`, `T1059`, `T1021`, `T1071`), 4-pillar forensic breakdown (Process, Network, Data/PII, Defensive Protocol), direct remediation triggers (`Terminate PID`, `Block IP`), and 1-click Markdown incident export.
   - [x] **Bidirectional Hex Dump & ASCII Packet Viewer**: Interactive 3-column Wireshark/xxd hex viewer (`00000000`, Hex bytes, ASCII) with stream direction filtering (`↗ Outbound`, `↙ Inbound`), format toggles (`Hex Dump`, `Formatted Text`, `Raw Stream`), in-payload search, cURL export, and JSON download.
   - [x] **Built-in PII Detection & Redaction Engine**: Automated inspection for sensitive personal and authentication data (Emails, Credit Card / PAN, SSN, API Keys / Bearer Tokens / JWTs, Passwords, Phone numbers) with real-time severity scoring, PII breakdown drawer, and interactive `Mask PII: ON / OFF` toggle.
   - [x] **Docking & Canvas Geometry Expansion**: One-click toggle between **Side Drawer** (480px ⇄ 840px wide) and **Bottom DevTools Shelf** (420px ⇄ 640px tall).

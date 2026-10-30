@@ -189,7 +189,7 @@ export function Header() {
                                 className="flex items-center gap-1.5 bg-slate-900 px-2.5 py-1 rounded-md border border-white/10 hover:border-cyan-500/40 cursor-pointer transition-colors text-[11px]"
                                 title="Switch Connected Telemetry Cluster"
                             >
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${activeModule === 'all' ? 'bg-emerald-400' : 'bg-cyan-400'}`} />
                                 <span className="text-slate-200 font-medium">
                                     {activeModObj?.name
                                         ? `${activeModObj.name} Cluster`
