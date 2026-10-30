@@ -21,12 +21,24 @@ export function FilterBar() {
 
     const protocols: { label: string; value: Protocol | null; dotColor?: string }[] = [
         { label: 'ALL', value: null },
-        { label: 'TCP', value: 'tcp', dotColor: 'var(--color-accent-blue)' },
-        { label: 'UDP', value: 'udp', dotColor: 'var(--color-accent-purple)' },
         { label: 'HTTPS', value: 'https', dotColor: 'var(--color-accent-cyan)' },
         { label: 'HTTP', value: 'http', dotColor: 'var(--color-accent-green)' },
+        { label: 'TCP', value: 'tcp', dotColor: 'var(--color-accent-blue)' },
+        { label: 'UDP', value: 'udp', dotColor: 'var(--color-accent-purple)' },
+        { label: 'QUIC', value: 'quic', dotColor: '#c084fc' },
+        { label: 'DNS', value: 'dns', dotColor: '#38bdf8' },
         { label: 'WS', value: 'ws', dotColor: 'var(--color-accent-orange)' },
+        { label: 'WSS', value: 'wss', dotColor: 'var(--color-accent-pink)' },
+        { label: 'NTP', value: 'ntp', dotColor: '#fbbf24' },
+        { label: 'SSH', value: 'ssh', dotColor: '#f43f5e' },
+        { label: 'RDP', value: 'rdp', dotColor: '#fb7185' },
+        { label: 'SMB', value: 'smb', dotColor: '#f97316' },
     ];
+
+    const getProtocolCount = (val: Protocol | null) => {
+        if (val === null) return events.length;
+        return events.filter((e) => e.protocol === val).length;
+    };
 
     const categories: { label: string; value: ServiceCategory | null }[] = [
         { label: 'All Categories', value: null },
@@ -110,6 +122,7 @@ export function FilterBar() {
             >
                 {protocols.map((p) => {
                     const isSelected = filters.protocol === p.value;
+                    const count = getProtocolCount(p.value);
                     return (
                         <button
                             key={p.label}
@@ -124,7 +137,17 @@ export function FilterBar() {
                             {p.dotColor && !isSelected && (
                                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: p.dotColor }} />
                             )}
-                            {p.label}
+                            <span>{p.label}</span>
+                            {count > 0 && (
+                                <span
+                                    className="text-[9px] px-1 py-0.2 rounded font-mono opacity-80"
+                                    style={{
+                                        backgroundColor: isSelected ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.06)',
+                                    }}
+                                >
+                                    {count}
+                                </span>
+                            )}
                         </button>
                     );
                 })}

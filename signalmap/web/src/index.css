@@ -355,6 +355,24 @@ a:focus-visible,
   color: var(--color-accent-pink);
 }
 
+.protocol-dns {
+  color: #38bdf8;
+}
+
+.protocol-quic {
+  color: #c084fc;
+}
+
+.protocol-ntp {
+  color: #fbbf24;
+}
+
+.protocol-ssh,
+.protocol-rdp,
+.protocol-smb {
+  color: #f43f5e;
+}
+
 /* ── Interactive Buttons & Chips ──────────────────────────────────── */
 .btn {
   display: inline-flex;

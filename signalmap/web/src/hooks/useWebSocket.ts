@@ -2,14 +2,24 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useConnectionStore } from '../stores/connectionStore';
 import type { ConnectionEvent } from '@shared/types';
 
-const WS_URL = `ws://${window.location.hostname}:${window.location.port || '8765'}/api/ws`;
+function getWebSocketUrl(): string {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.hostname || '127.0.0.1';
+    const port = window.location.port;
+    // In local Vite dev mode (:5173 / :5174), connect directly to the FastAPI backend (:8765)
+    // to avoid Vite ws-proxy ECONNABORTED socket errors on tab reload or React StrictMode remounts.
+    if (port === '5173' || port === '5174') {
+        return `${protocol}//${host}:8765/api/ws`;
+    }
+    return `${protocol}//${host}:${port || '8765'}/api/ws`;
+}
 
 export function useWebSocket() {
     const wsRef = useRef<WebSocket | null>(null);
-    const reconnectTimer = useRef<any>(null);
+    const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const addEvents = useConnectionStore((s) => s.addEvents);
     const eventBufferRef = useRef<ConnectionEvent[]>([]);
-    const flushTimerRef = useRef<any>(null);
+    const flushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const flushBuffer = useCallback(() => {
         if (eventBufferRef.current.length > 0) {
@@ -19,59 +29,79 @@ export function useWebSocket() {
         }
     }, [addEvents]);
 
-    const connect = useCallback(() => {
-        if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    useEffect(() => {
+        let isDisposed = false;
 
-        const ws = new WebSocket(WS_URL);
-        wsRef.current = ws;
+        const connect = () => {
+            if (isDisposed) return;
+            if (
+                wsRef.current &&
+                (wsRef.current.readyState === WebSocket.OPEN ||
+                    wsRef.current.readyState === WebSocket.CONNECTING)
+            ) {
+                return;
+            }
 
-        ws.onopen = () => {
-            console.log('✦ WebSocket connected');
-        };
+            const ws = new WebSocket(getWebSocketUrl());
+            wsRef.current = ws;
 
-        ws.onmessage = (msg) => {
-            try {
-                const parsed = JSON.parse(msg.data);
-                if (parsed.type === 'event' && parsed.data) {
-                    const evt = parsed.data as ConnectionEvent;
-                    // If critical threat or detected anomaly, flush immediately without waiting for interval
-                    if (evt.anomaly?.is_anomaly || evt.anomaly?.severity === 'critical') {
-                        eventBufferRef.current.push(evt);
-                        flushBuffer();
-                    } else {
-                        eventBufferRef.current.push(evt);
-                        // Upper bound cap on buffer to avoid memory spike under massive floods
-                        if (eventBufferRef.current.length >= 150) {
+            ws.onopen = () => {
+                if (isDisposed) {
+                    ws.close(1000, 'Component unmounted');
+                    return;
+                }
+                console.log('✦ WebSocket connected');
+            };
+
+            ws.onmessage = (msg) => {
+                if (isDisposed) return;
+                try {
+                    const parsed = JSON.parse(msg.data);
+                    if (parsed.type === 'event' && parsed.data) {
+                        const evt = parsed.data as ConnectionEvent;
+                        if (evt.anomaly?.is_anomaly || evt.anomaly?.severity === 'critical') {
+                            eventBufferRef.current.push(evt);
                             flushBuffer();
+                        } else {
+                            eventBufferRef.current.push(evt);
+                            if (eventBufferRef.current.length >= 150) {
+                                flushBuffer();
+                            }
                         }
                     }
+                } catch {
+                    // ignore parse errors
                 }
-            } catch {
-                // ignore parse errors
-            }
+            };
+
+            ws.onclose = () => {
+                if (isDisposed) return;
+                console.log('✦ WebSocket disconnected, reconnecting in 2s...');
+                reconnectTimer.current = setTimeout(connect, 2000);
+            };
+
+            ws.onerror = () => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.close();
+                }
+            };
         };
 
-        ws.onclose = () => {
-            console.log('✦ WebSocket disconnected, reconnecting in 2s...');
-            reconnectTimer.current = setTimeout(connect, 2000);
-        };
-
-        ws.onerror = () => {
-            ws.close();
-        };
-    }, [flushBuffer]);
-
-    useEffect(() => {
-        // High-frequency 100ms batch flush window
         flushTimerRef.current = setInterval(flushBuffer, 100);
         connect();
+
         return () => {
-            clearTimeout(reconnectTimer.current);
+            isDisposed = true;
+            if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
             if (flushTimerRef.current) clearInterval(flushTimerRef.current);
             flushBuffer();
-            wsRef.current?.close();
+            const currentWs = wsRef.current;
+            wsRef.current = null;
+            if (currentWs && currentWs.readyState === WebSocket.OPEN) {
+                currentWs.close(1000, 'Cleanup');
+            }
         };
-    }, [connect, flushBuffer]);
+    }, [flushBuffer]);
 
     return wsRef;
 }

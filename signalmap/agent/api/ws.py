@@ -52,9 +52,10 @@ async def broadcast_event(event: ConnectionEvent) -> None:
         "data": event.model_dump(mode="json"),
     }, default=str)
     disconnected = set()
-    for ws in _clients:
+    for client_ws in list(_clients):
         try:
-            await ws.send_text(data)
+            await client_ws.send_text(data)
         except Exception:
-            disconnected.add(ws)
-    _clients -= disconnected
+            disconnected.add(client_ws)
+    if disconnected:
+        _clients.difference_update(disconnected)

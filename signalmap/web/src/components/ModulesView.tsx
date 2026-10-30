@@ -212,14 +212,17 @@ export function ModulesView() {
             return events.filter(
                 (e) =>
                     !e.source_collector ||
+                    e.source_collector === 'psutil_sockets' ||
+                    e.source_collector === 'windows_udp' ||
+                    e.source_collector === 'windows_dns' ||
                     e.source_collector === 'socket' ||
                     e.source_collector === 'netstat' ||
                     e.source_collector === 'windows_evtx' ||
-                    (e as any).source_plugin === 'windows'
+                    (e as { source_plugin?: string }).source_plugin === 'windows'
             ).length;
         }
         return events.filter(
-            (e) => e.source_collector === modId || (e as any).source_plugin === modId
+            (e) => e.source_collector === modId || (e as { source_plugin?: string }).source_plugin === modId
         ).length;
     };
 

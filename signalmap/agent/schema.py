@@ -37,6 +37,12 @@ class Protocol(str, Enum):
     HTTPS = "https"
     WS = "ws"
     WSS = "wss"
+    DNS = "dns"
+    QUIC = "quic"
+    SSH = "ssh"
+    RDP = "rdp"
+    SMB = "smb"
+    NTP = "ntp"
 
 
 class NodeType(str, Enum):

@@ -1,9 +1,9 @@
 // Auto-generated — do not edit. Run: python -m agent.schema
-// Generated at: 2026-09-17T15:13:53.053726Z
+// Generated at: 2026-10-30T01:26:00.000000Z
 
 export type Direction = "inbound" | "outbound";
 export type State = "active" | "closed";
-export type Protocol = "tcp" | "udp" | "http" | "https" | "ws" | "wss";
+export type Protocol = "tcp" | "udp" | "http" | "https" | "ws" | "wss" | "dns" | "quic" | "ssh" | "rdp" | "smb" | "ntp";
 export type NodeType = "local_process" | "local_host" | "remote_endpoint" | "service" | "geo_location";
 export type ServiceCategory = "finance" | "crm" | "dev" | "comms" | "cloud" | "cdn" | "other";
 export type Severity = "low" | "medium" | "high" | "critical";
@@ -55,10 +55,12 @@ export interface Metrics {
 }
 
 export interface RemoteEndpoint {
-  ip?: string | null;
+  ip?: OptionalString;
   hostname?: string | null;
   port?: number | null;
 }
+
+type OptionalString = string | null;
 
 export interface ServiceInfo {
   name?: string | null;

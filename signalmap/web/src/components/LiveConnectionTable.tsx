@@ -13,6 +13,7 @@ export function LiveConnectionTable() {
         tableSortField,
         tableSortDirection,
         setTableSort,
+        activeModule,
     } = useConnectionStore();
 
     const [isExpanded, setIsExpanded] = useState(false);
@@ -22,6 +23,21 @@ export function LiveConnectionTable() {
     // Filter events
     const filteredEvents = useMemo(() => {
         return events.filter((e) => {
+            if (activeModule && activeModule !== 'all') {
+                const collector = e.source_collector || 'psutil_sockets';
+                const plugin = (e as { source_plugin?: string }).source_plugin || (
+                    collector === 'psutil_sockets' ||
+                    collector === 'windows_udp' ||
+                    collector === 'windows_dns' ||
+                    collector === 'windows_evtx' ||
+                    collector === 'socket' ||
+                    collector === 'netstat'
+                        ? 'windows'
+                        : collector
+                );
+                if (plugin !== activeModule) return false;
+            }
+
             if (filters.protocol && e.protocol !== filters.protocol) return false;
             if (filters.direction && e.direction !== filters.direction) return false;
             if (filters.category && e.service?.category !== filters.category) return false;
@@ -64,7 +80,7 @@ export function LiveConnectionTable() {
 
             return true;
         });
-    }, [events, filters, searchQuery, tableSearch]);
+    }, [events, filters, searchQuery, tableSearch, activeModule]);
 
     // Sort events
     const sortedEvents = useMemo(() => {

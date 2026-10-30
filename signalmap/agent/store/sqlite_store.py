@@ -61,6 +61,10 @@ class SQLiteStore:
         await self._conn.execute('CREATE INDEX IF NOT EXISTS idx_direction ON events(direction);')
         await self._conn.execute('CREATE INDEX IF NOT EXISTS idx_anomaly ON events(is_anomaly);')
         await self._conn.execute('CREATE INDEX IF NOT EXISTS idx_process ON events(process_name);')
+        # Purge stale loopback or null-endpoint socket rows from previous runs so fresh multi-protocol external sockets populate cleanly
+        await self._conn.execute(
+            "DELETE FROM events WHERE remote_ip IS NULL OR remote_ip IN ('127.0.0.1', '::1', '0.0.0.0', '::') OR source_collector IN ('psutil_sockets', 'windows_udp', 'windows_dns');"
+        )
         await self._conn.commit()
 
     async def close(self):

@@ -61,10 +61,16 @@ export function useFilteredEvents(): ConnectionEvent[] {
         return events.filter((e) => {
             // Modular Multi-Source Plugin filter
             if (activeModule && activeModule !== 'all') {
-                const plugin = (e as any).source_plugin || (
-                    e.source_collector === 'socket' || e.source_collector === 'netstat' || e.source_collector === 'windows_evtx'
+                const collector = e.source_collector || 'psutil_sockets';
+                const plugin = (e as { source_plugin?: string }).source_plugin || (
+                    collector === 'psutil_sockets' ||
+                    collector === 'windows_udp' ||
+                    collector === 'windows_dns' ||
+                    collector === 'windows_evtx' ||
+                    collector === 'socket' ||
+                    collector === 'netstat'
                         ? 'windows'
-                        : e.source_collector
+                        : collector
                 );
                 if (plugin !== activeModule) return false;
             }

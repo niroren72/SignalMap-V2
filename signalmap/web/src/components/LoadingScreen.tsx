@@ -665,15 +665,16 @@ export function LoadingScreen({ onComplete, manualDismiss = false }: LoadingScre
         window.addEventListener('resize', handleResize, { passive: true });
 
         // 7. Animation Loop (Exact antigravity.google update + ping-pong render cycle)
-        const clock = new THREE.Clock();
+        const timer = new THREE.Timer();
         let lastTime = 0;
         let everRendered = false;
         let animationFrameId: number;
 
-        const animate = () => {
+        const animate = (timestamp?: number) => {
             animationFrameId = requestAnimationFrame(animate);
 
-            const elapsed = clock.getElapsedTime();
+            timer.update(timestamp);
+            const elapsed = timer.getElapsed();
             const dt = Math.min(0.1, Math.max(0, elapsed - lastTime));
             lastTime = elapsed;
 

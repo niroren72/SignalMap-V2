@@ -27,6 +27,22 @@ export function getDataSourceMeta(e: ConnectionEvent): DataSourceMeta {
                 icon: '🪟',
                 badgeClass: 'bg-cyan-950/60 border-cyan-500/35 text-cyan-300',
             };
+        case 'windows_udp':
+            return {
+                id: 'windows_udp',
+                label: 'Windows UDP Table',
+                sublabel: 'windows_udp',
+                icon: '📡',
+                badgeClass: 'bg-purple-950/60 border-purple-500/35 text-purple-300',
+            };
+        case 'windows_dns':
+            return {
+                id: 'windows_dns',
+                label: 'Windows DNS Cache',
+                sublabel: 'windows_dns',
+                icon: '🌐',
+                badgeClass: 'bg-teal-950/60 border-teal-500/35 text-teal-300',
+            };
         case 'windows_evtx':
         case 'evtx':
             return {
@@ -119,6 +135,7 @@ export function ConnectionTable() {
         setTableSort,
         playbackTime,
         isLive,
+        activeModule,
     } = useConnectionStore();
 
     const [tableSearch, setTableSearch] = useState('');
@@ -127,6 +144,21 @@ export function ConnectionTable() {
     // Filter events based on active filters, timeline, and table search
     const filteredEvents = useMemo(() => {
         return events.filter((e) => {
+            if (activeModule && activeModule !== 'all') {
+                const collector = e.source_collector || 'psutil_sockets';
+                const plugin = (e as { source_plugin?: string }).source_plugin || (
+                    collector === 'psutil_sockets' ||
+                    collector === 'windows_udp' ||
+                    collector === 'windows_dns' ||
+                    collector === 'windows_evtx' ||
+                    collector === 'socket' ||
+                    collector === 'netstat'
+                        ? 'windows'
+                        : collector
+                );
+                if (plugin !== activeModule) return false;
+            }
+
             // Timeline scrubber filter
             if (!isLive && playbackTime !== null) {
                 const eventTime = e.metrics?.last_seen || e.metrics?.first_seen;
@@ -185,7 +217,7 @@ export function ConnectionTable() {
 
             return true;
         });
-    }, [events, filters, searchQuery, tableSearch, isLive, playbackTime]);
+    }, [events, filters, searchQuery, tableSearch, isLive, playbackTime, activeModule]);
 
     // Sort events
     const sortedEvents = useMemo(() => {

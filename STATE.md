@@ -18,11 +18,14 @@
 
 ## 🛠️ Active & Recently Touched Files
 
-- `signalmap/web/src/components/ConnectionTable.tsx`, `LiveConnectionTable.tsx`, & `signalmap/web/src/stores/connectionStore.ts` (Added `DATA SOURCE` column with badge styling, sorting, and search/filtering by collector source)
+- `signalmap/web/src/components/LoadingScreen.tsx`, `signalmap/web/src/suppressThreeWarnings.ts`, `signalmap/web/src/main.tsx`, & `signalmap/web/vite.config.ts` (Migrated `THREE.Clock` to `THREE.Timer` in `LoadingScreen.tsx` and filtered third-party `THREE.Clock` deprecation warnings in client & Vite loggers)
+- `.vscode/settings.json` & `signalmap/.vscode/settings.json` (Configured `git.scanRepositories: ["."]`, `git.ignoredRepositories: ["signalmap"]`, and `git.openRepositoryInParentFolders: "always"` to resolve IDE "no git repository" popup after moving `.git` to workspace root)
+- `signalmap/web/src/hooks/useWebSocket.ts` & `signalmap/web/vite.config.ts` (Fixed `[vite] ws proxy socket error: Error: write ECONNABORTED` by connecting directly to `:8765/api/ws` in dev mode and guarding React 18 StrictMode `CONNECTING` socket cleanup)
+- `TODO.md` (Project todo list and prioritized engineering backlog across P1–P4, including Deep Data Inspection & Data Visibility Suite and the Help & Documentation Tab for connectors, permissions, and installed features)
+- `signalmap/agent/collectors/socket_collector.py`, `signalmap/agent/enrichment.py`, `signalmap/agent/schema.py`, & `signalmap/shared/types.ts` (Upgraded Windows collector to monitor all external TCP states, Windows UDP table sockets, and Windows DNS resolver cache across all protocols: HTTPS, HTTP, TCP, UDP, QUIC, DNS, WS, WSS, NTP, SSH, RDP, SMB; eliminated blocking reverse-DNS bottlenecks)
+- `signalmap/web/src/components/FilterBar.tsx`, `ConnectionTable.tsx`, `LiveConnectionTable.tsx`, `ModulesView.tsx`, & `hooks/useConnections.ts` (Added all protocol filter options with live counts, added `DATA SOURCE` badges for `psutil_sockets`, `windows_udp`, `windows_dns`, and fixed Windows module filtering)
 - `signalmap/web/src/components/LoadingScreen.tsx` & `HolographicCardLogo.tsx` & `Header.tsx` (Cleaned up logo card frame, removed glowing circles/rings, removed v4.8-aero & READY // CLICK... prompts)
-- `signalmap/agent/collectors/socket_collector.py` (Socket polling & process mapping)
 - `signalmap/web/src/components/DetailPanel.tsx` (Slide-over detail inspector)
-- `signalmap/web/src/components/ModulesView.tsx` & `DashboardView.tsx` (App view components)
 - `signalmap/web/src/types/modules.ts` (Data contracts & types)
 
 ---
